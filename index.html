@@ -1,0 +1,2991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Roster</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .no-print {
+        display: none !important;
+      }
+      main, section {
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+        width: 100% !important;
+      }
+      .print-wrapper {
+        padding: 0 !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        background: transparent !important;
+      }
+      .clipboard-card {
+        border: none !important;
+        box-shadow: none !important;
+        margin: 0 auto !important;
+        page-break-inside: avoid;
+      }
+      .print-half-page {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+      }
+      .print-page-break {
+        page-break-after: always !important;
+        break-after: page !important;
+      }
+      #printTargetArea {
+        display: none;
+      }
+    }
+    #printTargetArea {
+      display: none;
+    }
+    .roster-table th, .roster-table td {
+      border: 1px solid #111827;
+    }
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+    /* Whiteboard canvas grid */
+    .field-grid-bg {
+      background-color: #15803d;
+      background-image: 
+        linear-gradient(rgba(255,255,255,0.18) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.18) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col">
+
+  <!-- TOP APP HEADER -->
+  <header class="no-print bg-slate-950 border-b border-slate-800 sticky top-0 z-30 shadow-xl">
+    <div class="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center space-x-3">
+        <div class="bg-gradient-to-tr from-blue-700 to-indigo-600 text-white p-2 rounded-xl font-black text-xl shadow-lg ring-1 ring-blue-400/30">
+          🏈
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-sm md:text-base font-extrabold tracking-tight text-white flex items-center gap-2">
+              Football Roster
+            </h1>
+            <span id="saveStatusBadge" class="text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium">
+              ● Saved
+            </span>
+          </div>
+          <p class="text-[11px] text-slate-400 hidden sm:block">Youth & High School Roster, Depth Charts, Drill Studio & Practice Planner</p>
+        </div>
+      </div>
+
+      <!-- PRIMARY ACTION BUTTONS -->
+      <div class="flex items-center space-x-1.5 flex-wrap gap-y-1.5">
+        <div class="flex items-center bg-slate-800/80 rounded-lg p-0.5 border border-slate-700">
+          <button onclick="exportJSONData()" title="Backup full roster & practice plan as JSON file" class="hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1">
+            <span>💾 Backup</span>
+          </button>
+          <label title="Load roster JSON file" class="hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1 cursor-pointer">
+            <span>📂 Load</span>
+            <input type="file" accept=".json" onchange="importJSONData(this.files[0])" class="hidden">
+          </label>
+          <button onclick="togglePasteImportModal()" title="Quick Paste Roster from Excel/Word" class="hover:bg-slate-700 text-cyan-300 px-2.5 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1">
+            <span>📋 Bulk Paste</span>
+          </button>
+        </div>
+
+        <div class="flex items-center gap-1">
+          <button onclick="openPracticePrintModal()" title="Print Practice Schedule & Selected Drill Cards" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition flex items-center gap-1">
+            <span>⏱️ Print Practice & Drills</span>
+          </button>
+          <button onclick="printRosterOverviewLetter()" title="Print complete Roster Overview on Letter paper" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition flex items-center gap-1">
+            <span>📊 Roster (Letter)</span>
+          </button>
+          <button onclick="printMasterChart1Page()" title="Print 2 Master Depth Charts per Letter page" class="bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition flex items-center gap-1">
+            <span>📋 Master 2/Pg</span>
+          </button>
+          <button onclick="printAllPlayerCardsLetter()" title="Print player cards (10 per 8.5&quot;×11&quot; sheet)" class="bg-amber-600 hover:bg-amber-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition flex items-center gap-1">
+            <span>🎴 Cards (10/Pg)</span>
+          </button>
+          <button onclick="generateAndShowImage()" title="Export 300 DPI high resolution PNG" class="bg-teal-600 hover:bg-teal-500 text-white px-2.5 py-1.5 rounded-lg text-xs font-bold shadow-md transition flex items-center gap-1 ml-1">
+            <span>📷 300 DPI</span>
+          </button>
+          <button onclick="triggerPrint()" class="bg-slate-100 hover:bg-white text-slate-900 px-3 py-1.5 rounded-lg text-xs font-black shadow-md transition flex items-center gap-1">
+            <span>🖨️ Print View</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NAVIGATION TABS -->
+    <div class="max-w-7xl mx-auto px-4 flex space-x-1 border-t border-slate-800 pt-1.5 overflow-x-auto text-xs font-medium no-scrollbar">
+      <button id="tab-drills" onclick="switchTab('drills')" class="py-2 px-3.5 rounded-t-lg transition-colors bg-emerald-600 text-white font-extrabold whitespace-nowrap flex items-center gap-1.5 shadow-md">
+        <span>🎨</span> <span>Drill Studio</span>
+      </button>
+      <button id="tab-practice" onclick="switchTab('practice')" class="py-2 px-3.5 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>⏱️</span> <span>Practice Plans (Half-Page)</span>
+      </button>
+      <button id="tab-preferences" onclick="switchTab('preferences')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>📊</span> <span>Roster Overview</span>
+      </button>
+      <button id="tab-rostersheet" onclick="switchTab('rostersheet')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>📑</span> <span>Game Participation</span>
+      </button>
+      <button id="tab-master" onclick="switchTab('master')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>📋</span> <span>Master 4-in-1 (6×4)</span>
+      </button>
+      <button id="tab-offense" onclick="switchTab('offense')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>🏈</span> <span>Offense Depth</span>
+      </button>
+      <button id="tab-defense" onclick="switchTab('defense')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>🛡️</span> <span>Defense Depth</span>
+      </button>
+      <button id="tab-kickoff" onclick="switchTab('kickoff')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>🚀</span> <span>Kickoff</span>
+      </button>
+      <button id="tab-kickreturn" onclick="switchTab('kickreturn')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>⚡</span> <span>Kick Return</span>
+      </button>
+      <button id="tab-puntreturn" onclick="switchTab('puntreturn')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>🎯</span> <span>Punt Return</span>
+      </button>
+      <button id="tab-punt" onclick="switchTab('punt')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>👟</span> <span>Punt Team</span>
+      </button>
+      <button id="tab-playercards" onclick="switchTab('playercards')" class="py-2 px-3 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5">
+        <span>🎴</span> <span>Player Cards (3×2)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- DRILL STUDIO FULL SCREEN TAB CONTAINER -->
+  <div id="drillStudioContainer" class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+    
+    <!-- LEFT COLUMN: DRILL DIRECTORY -->
+    <aside class="no-print lg:col-span-4 bg-slate-800/90 border border-slate-700 rounded-2xl p-4 shadow-xl flex flex-col h-[780px]">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+        <div>
+          <h2 class="text-sm font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <span>📚</span> Drill Directory
+          </h2>
+          <span class="text-[11px] text-slate-400">Click drill to view & sketch</span>
+        </div>
+        <button onclick="createNewDrill()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold px-3 py-1.5 rounded-lg shadow transition flex items-center gap-1">
+          <span>+ New Drill</span>
+        </button>
+      </div>
+
+      <!-- SEARCH & FILTER -->
+      <div class="pt-3 pb-2 space-y-2">
+        <input type="text" id="drillSearchInput" oninput="filterDrillList()" placeholder="🔍 Search drill name, group..." class="w-full bg-slate-900 border border-slate-700 text-xs rounded-lg p-2 text-white placeholder-slate-500 outline-none focus:ring-1 focus:ring-emerald-500">
+        
+        <div class="flex items-center gap-1 overflow-x-auto no-scrollbar pb-1 text-[10px]">
+          <button onclick="setDrillFilter('ALL')" class="drill-cat-filter px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold whitespace-nowrap" data-cat="ALL">All</button>
+          <button onclick="setDrillFilter('Tackling')" class="drill-cat-filter px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold whitespace-nowrap" data-cat="Tackling">Tackling</button>
+          <button onclick="setDrillFilter('RB Circuit')" class="drill-cat-filter px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold whitespace-nowrap" data-cat="RB Circuit">RB Circuit</button>
+          <button onclick="setDrillFilter('Indy')" class="drill-cat-filter px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold whitespace-nowrap" data-cat="Indy">Indy</button>
+          <button onclick="setDrillFilter('Turnover')" class="drill-cat-filter px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold whitespace-nowrap" data-cat="Turnover">Turnover</button>
+          <button onclick="setDrillFilter('Team')" class="drill-cat-filter px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold whitespace-nowrap" data-cat="Team">Team</button>
+        </div>
+      </div>
+
+      <!-- DRILL LIST CONTAINER -->
+      <div class="flex-1 overflow-y-auto pr-1 space-y-1.5" id="drillDirectoryList">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div class="pt-2 border-t border-slate-700 text-[11px] text-slate-400 flex justify-between items-center">
+        <span>Total Library: <strong class="text-white" id="drillCountLabel">0</strong></span>
+        <span class="text-emerald-400 text-[10px]">Syncs to Practice Plans</span>
+      </div>
+    </aside>
+
+    <!-- RIGHT COLUMN: DRILL EDITOR & DRAWING WHITEBOARD -->
+    <main class="no-print lg:col-span-8 bg-slate-800/90 border border-slate-700 rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col h-[780px] overflow-y-auto">
+      
+      <!-- TOP DRILL META ROW -->
+      <div class="space-y-3 pb-3 border-b border-slate-700">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+            <input type="text" id="drillCategoryInput" oninput="saveCurrentDrillMeta()" placeholder="Category (e.g. Tackling Circuit)" class="w-48 bg-slate-900 border border-slate-700 text-xs font-black text-emerald-400 rounded-lg p-2 outline-none uppercase focus:ring-1 focus:ring-emerald-500">
+            <input type="text" id="drillTitleInput" oninput="saveCurrentDrillMeta()" placeholder="Drill Title (e.g. Profile Tackle & Roll)" class="flex-1 bg-slate-900 border border-slate-700 text-sm font-extrabold text-white rounded-lg p-2 outline-none focus:ring-1 focus:ring-emerald-500">
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button onclick="deleteCurrentDrill()" class="text-red-400 hover:text-red-300 text-xs font-semibold px-2.5 py-1 rounded border border-red-500/30 hover:bg-red-500/10">
+              🗑️ Delete
+            </button>
+            <button onclick="saveCurrentDrillMeta(true)" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow">
+              💾 Save Drill
+            </button>
+          </div>
+        </div>
+
+        <!-- PARTICIPANTS TAG SELECTOR -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+            Participants / Groups Involved:
+          </label>
+          <div class="flex flex-wrap gap-1.5" id="participantTagGroup">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- COACHING FOCUS & NOTES -->
+        <div>
+          <label class="block text-[11px] font-bold text-slate-300 uppercase tracking-wider mb-1">
+            Coaching Points & Instructions:
+          </label>
+          <textarea id="drillNotesInput" oninput="saveCurrentDrillMeta()" rows="2" placeholder="Keys: Near foot near shoulder, strike on the rise, wrap & squeeze, drive through contact..." class="w-full bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg p-2 outline-none focus:ring-1 focus:ring-emerald-500"></textarea>
+        </div>
+      </div>
+
+      <!-- WHITEBOARD / DRAWING CANVAS SECTION -->
+      <div class="flex-1 flex flex-col pt-3 min-h-[380px]">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-black uppercase text-emerald-400 tracking-wide flex items-center gap-1">
+              <span>✏️</span> Drill Diagram Canvas
+            </span>
+            <span class="text-[10px] text-slate-400 hidden sm:inline">(Draw blocking paths, runs, cone setups)</span>
+          </div>
+
+          <!-- CANVAS TOOLS -->
+          <div class="flex items-center gap-1 bg-slate-900 border border-slate-700 rounded-lg p-1 text-xs">
+            <button id="tool-draw" onclick="setCanvasTool('draw')" class="px-2 py-1 rounded font-bold bg-emerald-600 text-white" title="Draw movement line">✏️ Line</button>
+            <button id="tool-arrow" onclick="setCanvasTool('arrow')" class="px-2 py-1 rounded font-bold hover:bg-slate-800 text-slate-300" title="Draw Arrow Route">➔ Arrow</button>
+            <button id="tool-cone" onclick="setCanvasTool('cone')" class="px-2 py-1 rounded font-bold hover:bg-slate-800 text-amber-400" title="Place Cone">▲ Cone</button>
+            <button id="tool-offense" onclick="setCanvasTool('offense')" class="px-2 py-1 rounded font-bold hover:bg-slate-800 text-blue-400" title="Place Offense Player">⭕ O</button>
+            <button id="tool-defense" onclick="setCanvasTool('defense')" class="px-2 py-1 rounded font-bold hover:bg-slate-800 text-red-400" title="Place Defender">✖️ X</button>
+            <button id="tool-ball" onclick="setCanvasTool('ball')" class="px-2 py-1 rounded font-bold hover:bg-slate-800 text-yellow-500" title="Place Football">🏈 Ball</button>
+            <button id="tool-eraser" onclick="setCanvasTool('eraser')" class="px-2 py-1 rounded font-bold hover:bg-slate-800 text-slate-400" title="Eraser">🧹 Eraser</button>
+            <div class="h-4 w-px bg-slate-700 mx-1"></div>
+            <button onclick="clearCanvas()" class="px-2 py-1 rounded font-bold hover:bg-red-500/20 text-red-400" title="Clear board">Reset</button>
+          </div>
+        </div>
+
+        <!-- CANVAS ELEMENT -->
+        <div class="flex-1 w-full bg-slate-950 rounded-xl border-2 border-slate-700 overflow-hidden relative flex items-center justify-center shadow-inner">
+          <canvas id="drillCanvas" width="700" height="340" class="field-grid-bg cursor-crosshair rounded-lg max-w-full max-h-full"></canvas>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MAIN APP CONTAINER FOR PRACTICE PLANS & ROSTER VIEWS -->
+  <div id="standardAppContainer" class="flex-1 max-w-7xl w-full mx-auto p-3 sm:p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-5 hidden">
+
+    <!-- LEFT SIDEBAR CONTROLS -->
+    <aside class="no-print lg:col-span-4 space-y-4">
+      
+      <!-- PRACTICE PLAN CONTROLS CARD (VISIBLE ON PRACTICE TAB) -->
+      <div id="practiceControlsCard" class="bg-slate-800/90 text-slate-100 p-4 rounded-xl border border-slate-700 shadow-md space-y-3.5 hidden">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <span>⏱️</span> Weekly Practice Plan Settings
+          </h2>
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/30">Half-Page / Day</span>
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-slate-300 mb-1">Week Label / Focus Title</label>
+          <input type="text" id="practiceWeekInput" value="WEEK 5 PREPARATION - VS WILDCATS" oninput="updatePracticeSettings()" class="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-lg p-2 font-bold outline-none focus:ring-1 focus:ring-emerald-500">
+        </div>
+
+        <!-- Customizable Days of the Week & Pad selection -->
+        <div class="space-y-2.5 pt-1 border-t border-slate-700">
+          <div class="flex justify-between items-center">
+            <label class="block text-[11px] font-semibold text-slate-300">Days of Week & Contact Level</label>
+            <span class="text-[10px] text-slate-400">Edit day labels directly</span>
+          </div>
+
+          <div class="space-y-2 text-xs" id="practiceDaysSetupList">
+            <!-- Dynamically populated 4 days -->
+          </div>
+        </div>
+
+        <!-- Add/Combine Period Helper -->
+        <div class="pt-2 border-t border-slate-700 flex justify-between items-center">
+          <span class="text-xs text-slate-400">Manage Drills</span>
+          <div class="flex items-center gap-1.5">
+            <button onclick="openPracticePrintModal()" class="bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1">
+              <span>🖨️ Print Packet</span>
+            </button>
+            <button onclick="switchTab('drills')" class="bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded text-xs font-bold transition flex items-center gap-1">
+              <span>🎨 Drill Studio</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- SHEET LAYOUT & VIEW CONTROLS -->
+      <div id="generalDisplaySettingsCard" class="bg-slate-800/90 text-slate-100 p-4 rounded-xl border border-slate-700 shadow-md space-y-3.5">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-700 pb-2">Sheet Options</h2>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Orientation</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button id="btnPortrait" onclick="setOrientation('portrait')" class="flex items-center justify-center space-x-1.5 py-2 px-3 border rounded-lg text-xs font-bold transition bg-blue-600/30 border-blue-500 text-white">
+              <span>📱 Portrait</span>
+            </button>
+            <button id="btnLandscape" onclick="setOrientation('landscape')" class="flex items-center justify-center space-x-1.5 py-2 px-3 border rounded-lg text-xs font-bold transition bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700">
+              <span>🖥️ Landscape</span>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Card Header Title</label>
+          <input type="text" id="sheetTitleInput" value="PLAYER POSITION PREFERENCES" oninput="updateSettings()" placeholder="Title text..." class="w-full bg-slate-900 border border-slate-700 text-white text-xs rounded-lg p-2 focus:ring-1 focus:ring-blue-500 font-bold outline-none">
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-semibold text-slate-300">Row Spacing</label>
+            <span id="densityVal" class="text-xs font-mono text-blue-400">Compact</span>
+          </div>
+          <input type="range" id="densitySlider" min="1" max="3" value="1" oninput="updateSettings()" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        </div>
+      </div>
+
+      <!-- DEPTH CHART ASSIGNMENT CONTROLS -->
+      <div id="depthChartAssignBox" class="bg-slate-800/90 text-slate-100 p-4 rounded-xl border border-slate-700 shadow-md space-y-3 hidden">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+          <h3 id="depthAssignTitle" class="text-xs font-bold text-slate-200 uppercase tracking-wider">Assign Positions</h3>
+          <span class="text-[10px] text-slate-400">Edit strings & codes</span>
+        </div>
+        <div id="depthAssignControls" class="space-y-2.5 text-xs max-h-[380px] overflow-y-auto pr-1">
+          <!-- Dynamically populated per tab -->
+        </div>
+      </div>
+
+      <!-- CARD PAGINATION CONTROLS -->
+      <div id="cardPageControlsBox" class="bg-slate-800/90 text-slate-100 p-4 rounded-xl border border-slate-700 shadow-md space-y-2.5 hidden">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-1.5">
+          <h3 id="cardPageBoxTitle" class="text-xs font-bold text-slate-300 uppercase tracking-wider">Card Pages</h3>
+          <span id="cardPageIndicator" class="text-xs font-bold text-blue-400 font-mono">Sheet 1 of 7</span>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="changeCardPage(-1)" class="flex-1 bg-slate-900 hover:bg-slate-700 text-slate-200 py-2 px-2 rounded-lg text-xs font-semibold border border-slate-700 transition">
+            ⬅️ Prev Cards
+          </button>
+          <button onclick="changeCardPage(1)" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2 px-2 rounded-lg text-xs font-bold shadow-md transition">
+            Next Cards ➡️
+          </button>
+        </div>
+      </div>
+
+      <!-- ROSTER CONTROLS CARD -->
+      <div class="bg-slate-800/90 text-slate-100 p-4 rounded-xl border border-slate-700 shadow-md flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-bold text-slate-200 uppercase tracking-wider">Roster (<span id="playerCount">25</span> Players)</h3>
+          <p class="text-[11px] text-slate-400">Manage names & jersey #s</p>
+        </div>
+        <div class="flex items-center space-x-1.5">
+          <button onclick="sortRosterByNumber()" class="bg-slate-900 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-lg text-xs font-bold border border-slate-700 transition" title="Sort roster by jersey number">
+            🔢 #
+          </button>
+          <button onclick="toggleRosterEditor()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition">
+            ✏️ Edit
+          </button>
+        </div>
+      </div>
+
+      <!-- STATS SUMMARY -->
+      <div class="bg-slate-800/50 p-3 rounded-xl border border-slate-700/60 text-[11px] text-slate-400 flex justify-between items-center">
+        <span>Active Players: <strong class="text-white" id="statRosterTotal">25</strong></span>
+        <span>Drills in Studio: <strong class="text-emerald-400" id="statDrillTotal">14</strong></span>
+      </div>
+
+    </aside>
+
+    <!-- RIGHT PREVIEW CANVAS -->
+    <section class="lg:col-span-8 flex flex-col items-center justify-start">
+      
+      <div class="no-print w-full flex items-center justify-between mb-2 text-slate-400 text-xs px-1">
+        <span id="previewTabLabel" class="font-bold text-slate-200">Practice Plan Preview</span>
+        <span id="activeUnitBadge" class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-[10px] font-mono border border-slate-700">Letter (8.5×11)</span>
+      </div>
+
+      <div class="print-wrapper w-full flex justify-center items-center overflow-auto p-4 bg-slate-950 rounded-2xl border border-slate-800 min-h-[560px]">
+        <div id="clipboardCard" class="clipboard-card bg-white text-black rounded shadow-2xl transition-all duration-200 relative box-border overflow-hidden" style="width: 11.0in; height: 8.5in; padding: 0.25in;">
+          <div class="w-full h-full flex flex-col justify-between">
+            <div id="cardHeader" class="text-center border-b-2 border-black pb-1 mb-1">
+              <h2 id="cardTitle" class="font-extrabold tracking-tight text-[10pt] uppercase leading-none text-slate-950">WEEKLY PRACTICE PLAN</h2>
+            </div>
+            <div id="tableContainer" class="flex-1 w-full flex gap-2 overflow-hidden">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+  <!-- PRACTICE & DRILL PRINT MODAL -->
+  <div id="practicePrintModal" class="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 text-white rounded-2xl max-w-xl w-full p-5 shadow-2xl flex flex-col max-h-[88vh]">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+        <div>
+          <h3 class="font-extrabold text-sm text-emerald-400 uppercase tracking-wide flex items-center gap-1.5">
+            <span>🖨️</span> Print Practice Plan & Drill Details
+          </h3>
+          <p class="text-xs text-slate-400">Choose whether to print schedules and which drill diagrams/coaching points to attach</p>
+        </div>
+        <button onclick="closePracticePrintModal()" class="text-slate-400 hover:text-slate-200 text-2xl font-bold leading-none">&times;</button>
+      </div>
+
+      <div class="space-y-3 flex-1 overflow-y-auto pr-1">
+        <!-- SCHEDULE SELECTION -->
+        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-200">
+            <input type="checkbox" id="printOptSchedule" checked class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-600">
+            <span>Include 4-Day Practice Schedule (1 Single Landscape Sheet • All 4 Days)</span>
+          </label>
+          <p class="text-[10px] text-slate-400 pl-6">Prints all 4 days together on one 11" × 8.5" sheet in a 2×2 grid matching the preview screen.</p>
+        </div>
+
+        <!-- DRILL DETAILS SELECTION -->
+        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <label class="flex items-center gap-2 cursor-pointer font-bold text-xs text-emerald-300">
+              <input type="checkbox" id="printOptDrills" checked onchange="toggleDrillsPrintSection(this.checked)" class="w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-600">
+              <span>Attach Drill Detail Sheets (Diagrams, Notes & Keys)</span>
+            </label>
+            <span class="text-[10px] text-slate-400">2 Drills per page</span>
+          </div>
+
+          <div id="drillSelectionWrapper" class="space-y-2 pt-1 border-t border-slate-700/80">
+            <div class="flex items-center justify-between text-[11px] gap-2">
+              <span class="text-slate-400 font-semibold">Select Drills to Print:</span>
+              <div class="flex items-center gap-1.5">
+                <button type="button" onclick="selectWeekScheduledDrills()" class="text-[10px] bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-300 px-2 py-0.5 rounded border border-emerald-500/40 font-bold">
+                  ⚡ Scheduled This Week
+                </button>
+                <button type="button" onclick="selectAllDrillsForPrint(true)" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded font-semibold">
+                  All
+                </button>
+                <button type="button" onclick="selectAllDrillsForPrint(false)" class="text-[10px] bg-slate-700 hover:bg-slate-600 text-slate-200 px-2 py-0.5 rounded font-semibold">
+                  None
+                </button>
+              </div>
+            </div>
+
+            <div class="max-h-48 overflow-y-auto space-y-1.5 pr-1 bg-slate-900/70 p-2 rounded-lg border border-slate-700/60" id="drillPrintChecklist">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-t border-slate-800 pt-3 mt-3 flex justify-between items-center">
+        <button onclick="closePracticePrintModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-semibold">
+          Cancel
+        </button>
+        <button onclick="executePracticeAndDrillsPrint()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1.5">
+          <span>🖨️ Print Selected Packet</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MULTI-DRILL PICKER POPUP MODAL -->
+  <div id="multiDrillModal" class="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-900 border border-slate-700 text-white rounded-2xl max-w-lg w-full p-5 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex justify-between items-center border-b border-slate-800 pb-3 mb-3">
+        <div>
+          <h3 class="font-extrabold text-sm text-emerald-400 uppercase tracking-wide">Assign Drill(s) to Period</h3>
+          <p class="text-xs text-slate-400" id="multiDrillModalSub">Select single or multiple split-period drills</p>
+        </div>
+        <button onclick="closeMultiDrillModal()" class="text-slate-400 hover:text-slate-200 text-2xl font-bold leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="multiDrillModalList">
+        <!-- List of drills with checkboxes -->
+      </div>
+
+      <div class="border-t border-slate-800 pt-3 mt-3 flex justify-between items-center">
+        <button onclick="applyDrillSelection([])" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-semibold">
+          Clear Slot
+        </button>
+        <button onclick="saveMultiDrillSelection()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">
+          Apply Selection
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROSTER MODAL -->
+  <div id="rosterModal" class="no-print fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 rounded-2xl max-w-xl w-full p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex justify-between items-center border-b pb-3 mb-4">
+        <div>
+          <h3 class="font-bold text-lg text-slate-800">Edit Roster Names & Jersey Numbers</h3>
+          <p class="text-xs text-slate-500">Updates sync immediately across all sheets and depth charts</p>
+        </div>
+        <button onclick="toggleRosterEditor()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">&times;</button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="modalRosterList">
+        <!-- Dynamically rendered -->
+      </div>
+
+      <div class="border-t pt-4 mt-4 flex justify-between items-center">
+        <button onclick="addNewPlayer()" class="bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold transition">
+          + Add Player
+        </button>
+        <button onclick="toggleRosterEditor()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-500 transition shadow">
+          Save & Done
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- BULK PASTE MODAL -->
+  <div id="bulkPasteModal" class="no-print fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl flex flex-col max-h-[85vh]">
+      <div class="flex justify-between items-center border-b pb-3 mb-3">
+        <div>
+          <h3 class="font-bold text-lg text-slate-800">Bulk Paste Roster</h3>
+          <p class="text-xs text-slate-500">Paste from Excel or Sheets (Format: Number, First Name, Last Name)</p>
+        </div>
+        <button onclick="togglePasteImportModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">&times;</button>
+      </div>
+      <textarea id="bulkPasteInput" rows="10" placeholder="28&#9;Hudson&#9;Ahn&#10;26&#9;Ascher&#9;Apfel&#10;5&#9;Conor&#9;Beauchamp" class="w-full bg-slate-50 border border-slate-300 rounded-lg p-2.5 text-xs font-mono text-slate-900 focus:ring-1 focus:ring-blue-500 outline-none"></textarea>
+      <div class="border-t pt-3 mt-3 flex justify-between items-center">
+        <span class="text-[11px] text-slate-500">Supports tab, comma, or pipe delimited</span>
+        <button onclick="processBulkPaste()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-500 shadow">
+          Import Roster
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGE DOWNLOAD MODAL -->
+  <div id="imageDownloadModal" class="no-print fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 rounded-2xl max-w-2xl w-full p-6 shadow-2xl flex flex-col items-center space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="w-full flex justify-between items-center border-b pb-3">
+        <div>
+          <h3 class="font-bold text-base text-slate-800">300 DPI High-Resolution Image Ready</h3>
+          <p class="text-xs text-slate-500">Save image directly or right-click to save.</p>
+        </div>
+        <button onclick="closeImageModal()" class="text-slate-400 hover:text-slate-600 text-2xl font-bold leading-none">&times;</button>
+      </div>
+
+      <div class="border border-slate-300 rounded-lg p-2 bg-slate-100 flex justify-center items-center w-full max-h-[55vh] overflow-auto">
+        <img id="generatedImagePreview" class="max-w-full h-auto shadow-md rounded border border-slate-200 object-contain" alt="300 DPI Preview">
+      </div>
+
+      <div class="w-full flex flex-wrap items-center justify-between gap-3 pt-2 border-t">
+        <p class="text-[11px] text-slate-500 italic">💡 Tip: Use this high-res image for color printing or laminated wrist coaches</p>
+        <div class="flex space-x-2">
+          <button onclick="closeImageModal()" class="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-300">
+            Close
+          </button>
+          <a id="modalDownloadBtn" download="football_roster_card.png" href="#" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-500 shadow flex items-center space-x-1">
+            <span>💾 Save Image File</span>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toastContainer" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- DYNAMIC PRINT TARGET CONTAINER -->
+  <div id="printTargetArea"></div>
+
+  <script>
+    // Initial Base Data
+    let players = [
+      { num: "28", firstName: "Hudson", lastName: "Ahn" },
+      { num: "26", firstName: "Ascher", lastName: "Apfel" },
+      { num: "5",  firstName: "Conor", lastName: "Beauchamp" },
+      { num: "99", firstName: "Jonah", lastName: "Ghattas" },
+      { num: "22", firstName: "Austin", lastName: "Goward" },
+      { num: "11", firstName: "William", lastName: "Jia" },
+      { num: "7",  firstName: "Alexander", lastName: "Majjhoo" },
+      { num: "10", firstName: "Jaxon", lastName: "Miller" },
+      { num: "12", firstName: "Bethany", lastName: "Nasr" },
+      { num: "16", firstName: "Zachariah", lastName: "Orow" },
+      { num: "21", firstName: "Gianni", lastName: "Perod" },
+      { num: "19", firstName: "Noah", lastName: "Persha" },
+      { num: "35", firstName: "Matthew", lastName: "Persha" },
+      { num: "0",  firstName: "Gabriel", lastName: "Petrous" },
+      { num: "15", firstName: "Iver", lastName: "Pollack" },
+      { num: "17", firstName: "Everett", lastName: "Pulcini" },
+      { num: "87", firstName: "Junyu", lastName: "Qian" },
+      { num: "81", firstName: "Maximo", lastName: "Robledo" },
+      { num: "23", firstName: "James", lastName: "Shelson" },
+      { num: "1",  firstName: "Benjamin", lastName: "Smagala" },
+      { num: "2",  firstName: "Jackson", lastName: "Sullivan" },
+      { num: "24", firstName: "Landon", lastName: "Todd" },
+      { num: "8",  firstName: "Emmett", lastName: "Ward" },
+      { num: "27", firstName: "Leonardo", lastName: "Wilson" },
+      { num: "14", firstName: "Jacob", lastName: "Zwiren" }
+    ];
+
+    const AVAILABLE_GROUPS = ["Team", "O-Backs", "D-Backs", "Line", "QBs/WRs", "LBs", "Special Teams"];
+
+    // Rich Drill Studio Library with participants, notes, and drawing data
+    let drillLibrary = [
+      {
+        id: "d1",
+        category: "Tackling",
+        name: "Profile Tackle & Roll Circuit",
+        groups: ["Team", "D-Backs", "LBs"],
+        notes: "Strike with near shoulder, wrap upper thigh, clamp and roll through contact.",
+        drawingData: null
+      },
+      {
+        id: "d2",
+        category: "RB Circuit",
+        name: "Gauntlet & High-Tight Security",
+        groups: ["O-Backs"],
+        notes: "Four points of pressure on ball. Two coaches strip with pads through bags.",
+        drawingData: null
+      },
+      {
+        id: "d3",
+        category: "Warmup",
+        name: "Dynamic Warmup & Agility Ladders",
+        groups: ["Team"],
+        notes: "High knees, hip openers, lateral shuffle, 50% / 75% / 100% build up.",
+        drawingData: null
+      },
+      {
+        id: "d4",
+        category: "Indy",
+        name: "O-Line Combo Blocks & Chute Drives",
+        groups: ["Line"],
+        notes: "Drive catch step, 6-inch punch, stay under chute bar, climb to second level.",
+        drawingData: null
+      },
+      {
+        id: "d5",
+        category: "Indy",
+        name: "D-Line Shed & Bag Rip / Swim",
+        groups: ["Line"],
+        notes: "Violent hands, thumbs up, hip flip around the edge, bend to QB.",
+        drawingData: null
+      },
+      {
+        id: "d6",
+        category: "Turnover",
+        name: "Strip, Scoop & Score Circuit",
+        groups: ["Team", "D-Backs"],
+        notes: "Tomahawk strip, recover loose ball with near chest or scoop on the run.",
+        drawingData: null
+      },
+      {
+        id: "d7",
+        category: "Special Teams",
+        name: "Punt Coverage Lane Discipline",
+        groups: ["Special Teams"],
+        notes: "Gunners avoid jam, snap to lane landmarks, contain outside return.",
+        drawingData: null
+      },
+      {
+        id: "d8",
+        category: "Team",
+        name: "Skelly 7-on-7 Passing Game",
+        groups: ["O-Backs", "D-Backs", "QBs/WRs"],
+        notes: "QB 3-step & 5-step timing. DB pattern match and break on throw.",
+        drawingData: null
+      },
+      {
+        id: "d9",
+        category: "Team",
+        name: "Inside Run (Trench 9-on-7)",
+        groups: ["Line", "O-Backs", "LBs"],
+        notes: "Full run fit, A/B gap integrity. Backs press the hole and make one cut.",
+        drawingData: null
+      },
+      {
+        id: "d10",
+        category: "Team",
+        name: "Team 11-on-11 Scrimmage Script",
+        groups: ["Team"],
+        notes: "1st & 10 series, 3rd down conversions, hurry-up red zone situations.",
+        drawingData: null
+      }
+    ];
+
+    let currentActiveDrillId = "d1";
+    let activeDrillFilter = "ALL";
+
+    // 4-Day Practice Structure: each day is a half-page with 8 blocks (15-min each, combinable)
+    let practiceWeek = {
+      title: "WEEK 5 PREPARATION - VS WILDCATS",
+      days: [
+        {
+          id: "day0",
+          name: "Monday (Day 1)",
+          gear: "Helmets & Shoulder Pads",
+          notes: "Focus on fundamentals, base installation & special teams lane work",
+          slots: [
+            { time: "0:00 - 0:15", duration: "15m", drills: ["Dynamic Warmup & Agility Ladders"] },
+            { time: "0:15 - 0:30", duration: "15m", drills: ["Profile Tackle & Roll Circuit"] },
+            { time: "0:30 - 0:45", duration: "15m", drills: ["Punt Coverage Lane Discipline"] },
+            { time: "0:45 - 1:00", duration: "15m", drills: ["O-Line Combo Blocks & Chute Drives", "Gauntlet & High-Tight Security"] },
+            { time: "1:00 - 1:15", duration: "15m", drills: ["Inside Run (Trench 9-on-7)"] },
+            { time: "1:15 - 1:45", duration: "30m", drills: ["Team 11-on-11 Scrimmage Script"] },
+            { time: "1:45 - 2:00", duration: "15m", drills: ["Conditioning & Stretch / Cool Down"] }
+          ]
+        },
+        {
+          id: "day1",
+          name: "Tuesday (Day 2)",
+          gear: "Full Pads",
+          notes: "Full contact, red zone scrimmage, goal-line power packages",
+          slots: [
+            { time: "0:00 - 0:15", duration: "15m", drills: ["Dynamic Warmup & Agility Ladders"] },
+            { time: "0:15 - 0:30", duration: "15m", drills: ["Strip, Scoop & Score Circuit"] },
+            { time: "0:30 - 0:45", duration: "15m", drills: ["D-Line Shed & Bag Rip / Swim"] },
+            { time: "0:45 - 1:15", duration: "30m", drills: ["Inside Run (Trench 9-on-7)", "Skelly 7-on-7 Passing Game"] },
+            { time: "1:15 - 1:45", duration: "30m", drills: ["Team 11-on-11 Scrimmage Script"] },
+            { time: "1:45 - 2:00", duration: "15m", drills: ["Conditioning & Stretch / Cool Down"] }
+          ]
+        },
+        {
+          id: "day2",
+          name: "Wednesday (Day 3)",
+          gear: "Full Pads",
+          notes: "Blitz pickup, third down conversions, two-minute hurry-up script",
+          slots: [
+            { time: "0:00 - 0:15", duration: "15m", drills: ["Dynamic Warmup & Agility Ladders"] },
+            { time: "0:15 - 0:30", duration: "15m", drills: ["Profile Tackle & Roll Circuit"] },
+            { time: "0:30 - 0:45", duration: "15m", drills: ["Gauntlet & High-Tight Security"] },
+            { time: "0:45 - 1:15", duration: "30m", drills: ["Skelly 7-on-7 Passing Game"] },
+            { time: "1:15 - 1:45", duration: "30m", drills: ["Team 11-on-11 Scrimmage Script"] },
+            { time: "1:45 - 2:00", duration: "15m", drills: ["Conditioning & Stretch / Cool Down"] }
+          ]
+        },
+        {
+          id: "day3",
+          name: "Thursday (Day 4)",
+          gear: "Helmets Only",
+          notes: "Walkthrough, mock game substitutions, two-minute drill execution",
+          slots: [
+            { time: "0:00 - 0:15", duration: "15m", drills: ["Dynamic Warmup & Agility Ladders"] },
+            { time: "0:15 - 0:30", duration: "15m", drills: ["Special Teams Lane Work & Fakes"] },
+            { time: "0:30 - 1:00", duration: "30m", drills: ["Team Offense Script vs Scout"] },
+            { time: "1:00 - 1:30", duration: "30m", drills: ["Team Defense Script vs Scout"] },
+            { time: "1:30 - 1:50", duration: "20m", drills: ["Two-Minute Hurry-Up Drill"] },
+            { time: "1:50 - 2:00", duration: "10m", drills: ["Special Teams Field Goals & Team Chant"] }
+          ]
+        }
+      ]
+    };
+
+    let depthFormations = {
+      offense: [
+        { code: "QB",  label: "Quarterback" },
+        { code: "RB",  label: "Running Back" },
+        { code: "FB",  label: "Fullback" },
+        { code: "WR1", label: "Wide Receiver 1" },
+        { code: "WR2", label: "Wide Receiver 2" },
+        { code: "TE",  label: "Tight End" },
+        { code: "LT",  label: "Left Tackle" },
+        { code: "LG",  label: "Left Guard" },
+        { code: "C",   label: "Center" },
+        { code: "RG",  label: "Right Guard" },
+        { code: "RT",  label: "Right Tackle" }
+      ],
+      defense: [
+        { code: "LE",  label: "Left End" },
+        { code: "LT",  label: "Left Tackle" },
+        { code: "NG",  label: "Nose Guard" },
+        { code: "RT",  label: "Right Tackle" },
+        { code: "RE",  label: "Right End" },
+        { code: "LLB", label: "Left Linebacker" },
+        { code: "MLB", label: "Middle Linebacker" },
+        { code: "RLB", label: "Right Linebacker" },
+        { code: "LCB", label: "Left Cornerback" },
+        { code: "RCB", label: "Right Cornerback" },
+        { code: "FS",  label: "Free Safety" }
+      ],
+      kickoff: [
+        { code: "K",  label: "Kicker" },
+        { code: "L1", label: "Left 1" },
+        { code: "L2", label: "Left 2" },
+        { code: "L3", label: "Left 3" },
+        { code: "L4", label: "Left 4" },
+        { code: "L5", label: "Left 5" },
+        { code: "R1", label: "Right 1" },
+        { code: "R2", label: "Right 2" },
+        { code: "R3", label: "Right 3" },
+        { code: "R4", label: "Right 4" },
+        { code: "R5", label: "Right 5" }
+      ],
+      kickreturn: [
+        { code: "KR1", label: "Returner 1" },
+        { code: "KR2", label: "Returner 2" },
+        { code: "F1",  label: "Front 1" },
+        { code: "F2",  label: "Front 2" },
+        { code: "F3",  label: "Front 3" },
+        { code: "F4",  label: "Front 4" },
+        { code: "M1",  label: "Middle 1" },
+        { code: "M2",  label: "Middle 2" },
+        { code: "M3",  label: "Middle 3" },
+        { code: "UP1", label: "Upback 1" },
+        { code: "UP2", label: "Upback 2" }
+      ],
+      puntreturn: [
+        { code: "PR1", label: "Punt Returner 1" },
+        { code: "PR2", label: "Punt Returner 2" },
+        { code: "JAM1", label: "Jammer 1" },
+        { code: "JAM2", label: "Jammer 2" },
+        { code: "FB1", label: "Front Block 1" },
+        { code: "FB2", label: "Front Block 2" },
+        { code: "FB3", label: "Front Block 3" },
+        { code: "FB4", label: "Front Block 4" },
+        { code: "MB1", label: "Middle Block 1" },
+        { code: "MB2", label: "Middle Block 2" },
+        { code: "UP",  label: "Upback Guard" }
+      ],
+      punt: [
+        { code: "P",    label: "Punter" },
+        { code: "LS",   label: "Long Snapper" },
+        { code: "UP",   label: "Personal Protector" },
+        { code: "G1",   label: "Guard 1" },
+        { code: "G2",   label: "Guard 2" },
+        { code: "T1",   label: "Tackle 1" },
+        { code: "T2",   label: "Tackle 2" },
+        { code: "W1",   label: "Wing 1" },
+        { code: "W2",   label: "Wing 2" },
+        { code: "GUN1", label: "Gunner 1" },
+        { code: "GUN2", label: "Gunner 2" }
+      ]
+    };
+
+    let depthAssignments = {
+      offense: {},
+      defense: {},
+      kickoff: {},
+      kickreturn: {},
+      puntreturn: {},
+      punt: {}
+    };
+
+    let state = {
+      activeTab: 'drills',
+      orientation: 'portrait',
+      density: 1,
+      cardPage: 0,
+      title: 'WEEKLY PRACTICE PLAN',
+      tabTitles: {
+        drills: 'DRILL STUDIO',
+        practice: 'WEEKLY PRACTICE SCHEDULE (HALF-PAGE DAYS)',
+        preferences: 'PLAYER POSITION PREFERENCES',
+        rostersheet: 'GAME DAY PARTICIPATION SHEET',
+        master: 'MASTER DEPTH CHART (DIAMOND & ST 1ST)',
+        offense: 'OFFENSE DEPTH CHART',
+        defense: 'DEFENSE DEPTH CHART',
+        kickoff: 'KICKOFF DEPTH CHART',
+        kickreturn: 'KICK RETURN DEPTH CHART',
+        puntreturn: 'PUNT RETURN DEPTH CHART',
+        punt: 'PUNT TEAM DEPTH CHART',
+        playercards: 'PLAYER CARDS (3" × 2")'
+      }
+    };
+
+    const LOCAL_STORAGE_KEY = 'football_roster_drillstudio_v1';
+
+    // Canvas drawing state
+    let canvasTool = 'draw';
+    let isDrawing = false;
+    let canvasStartX = 0;
+    let canvasStartY = 0;
+    let canvasSnapshot = null;
+
+    // Active slot modal tracker
+    let activeSlotEdit = { dayIndex: 0, slotIndex: 0 };
+
+    window.addEventListener('DOMContentLoaded', () => {
+      loadLocalData();
+      initCanvas();
+      renderDrillDirectory();
+      loadDrillIntoStudio(currentActiveDrillId);
+      renderPracticeDaysSetupControls();
+      updatePrintPageStyle();
+      renderAssignControls();
+      renderCard();
+      updateStats();
+    });
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const el = document.createElement('div');
+      const bg = type === 'error' ? 'bg-red-600' : type === 'success' ? 'bg-emerald-600' : 'bg-slate-800';
+      el.className = `${bg} text-white px-3.5 py-2 rounded-lg text-xs font-bold shadow-xl border border-white/20 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto flex items-center gap-2`;
+      el.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '⚠️' : 'ℹ️'}</span><span>${message}</span>`;
+      container.appendChild(el);
+      setTimeout(() => { el.classList.remove('translate-y-2', 'opacity-0'); }, 10);
+      setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => el.remove(), 300);
+      }, 2500);
+    }
+
+    function saveLocalData() {
+      try {
+        const payload = { players, depthAssignments, depthFormations, state, practiceWeek, drillLibrary, currentActiveDrillId };
+        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(payload));
+        const badge = document.getElementById('saveStatusBadge');
+        if (badge) {
+          badge.innerText = '● Saved';
+          badge.className = 'text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-medium';
+        }
+        updateStats();
+      } catch (e) {
+        console.warn('LocalStorage save failed', e);
+      }
+    }
+
+    function loadLocalData() {
+      try {
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.players && Array.isArray(parsed.players)) players = parsed.players;
+          if (parsed.depthAssignments) depthAssignments = { ...depthAssignments, ...parsed.depthAssignments };
+          if (parsed.depthFormations) depthFormations = { ...depthFormations, ...parsed.depthFormations };
+          if (parsed.state) state = { ...state, ...parsed.state };
+          if (parsed.practiceWeek) practiceWeek = parsed.practiceWeek;
+          if (parsed.drillLibrary && Array.isArray(parsed.drillLibrary)) drillLibrary = parsed.drillLibrary;
+          if (parsed.currentActiveDrillId) currentActiveDrillId = parsed.currentActiveDrillId;
+        }
+      } catch (e) {
+        console.warn('LocalStorage load failed', e);
+      }
+    }
+
+    function updateStats() {
+      const rosterCountEl = document.getElementById('statRosterTotal');
+      const drillCountEl = document.getElementById('statDrillTotal');
+      const topCount = document.getElementById('playerCount');
+      const directoryCount = document.getElementById('drillCountLabel');
+
+      if (rosterCountEl) rosterCountEl.innerText = players.length;
+      if (topCount) topCount.innerText = players.length;
+      if (drillCountEl) drillCountEl.innerText = drillLibrary.length;
+      if (directoryCount) directoryCount.innerText = drillLibrary.length;
+    }
+
+    function formatName(p) {
+      if (!p) return '';
+      return `${p.firstName} ${p.lastName}`.trim();
+    }
+
+    function formatPlayerShort(num) {
+      if (!num) return '--';
+      const player = players.find(p => String(p.num) === String(num));
+      if (!player) return `#${num}`;
+      return `#${player.num} ${player.firstName}`;
+    }
+
+    // TAB CONTROLLER
+    function switchTab(tabKey) {
+      state.activeTab = tabKey;
+      
+      const allTabs = ['drills', 'practice', 'preferences', 'rostersheet', 'master', 'offense', 'defense', 'kickoff', 'kickreturn', 'puntreturn', 'punt', 'playercards'];
+      allTabs.forEach(t => {
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+          if (t === tabKey) {
+            btn.className = 'py-2 px-3.5 rounded-t-lg transition-colors bg-emerald-600 text-white font-extrabold whitespace-nowrap flex items-center gap-1.5 shadow-md';
+          } else {
+            btn.className = 'py-2 px-3.5 rounded-t-lg transition-colors text-slate-400 hover:text-white hover:bg-slate-800 whitespace-nowrap flex items-center gap-1.5';
+          }
+        }
+      });
+
+      const studioContainer = document.getElementById('drillStudioContainer');
+      const standardContainer = document.getElementById('standardAppContainer');
+      const practiceControls = document.getElementById('practiceControlsCard');
+      const generalDisplaySettings = document.getElementById('generalDisplaySettingsCard');
+      const depthAssignBox = document.getElementById('depthChartAssignBox');
+      const cardPageBox = document.getElementById('cardPageControlsBox');
+
+      if (tabKey === 'drills') {
+        if (studioContainer) studioContainer.classList.remove('hidden');
+        if (standardContainer) standardContainer.classList.add('hidden');
+        renderDrillDirectory();
+        loadDrillIntoStudio(currentActiveDrillId);
+      } else {
+        if (studioContainer) studioContainer.classList.add('hidden');
+        if (standardContainer) standardContainer.classList.remove('hidden');
+
+        if (tabKey === 'practice') {
+          if (practiceControls) practiceControls.classList.remove('hidden');
+          if (generalDisplaySettings) generalDisplaySettings.classList.remove('hidden');
+          if (depthAssignBox) depthAssignBox.classList.add('hidden');
+          if (cardPageBox) cardPageBox.classList.add('hidden');
+          renderPracticeDaysSetupControls();
+        } else if (['offense', 'defense', 'kickoff', 'kickreturn', 'puntreturn', 'punt'].includes(tabKey)) {
+          if (practiceControls) practiceControls.classList.add('hidden');
+          if (generalDisplaySettings) generalDisplaySettings.classList.remove('hidden');
+          if (depthAssignBox) depthAssignBox.classList.remove('hidden');
+          if (cardPageBox) cardPageBox.classList.add('hidden');
+          renderAssignControls();
+        } else if (tabKey === 'playercards') {
+          if (practiceControls) practiceControls.classList.add('hidden');
+          if (generalDisplaySettings) generalDisplaySettings.classList.remove('hidden');
+          if (depthAssignBox) depthAssignBox.classList.add('hidden');
+          if (cardPageBox) cardPageBox.classList.remove('hidden');
+        } else {
+          if (practiceControls) practiceControls.classList.add('hidden');
+          if (generalDisplaySettings) generalDisplaySettings.classList.remove('hidden');
+          if (depthAssignBox) depthAssignBox.classList.add('hidden');
+          if (cardPageBox) cardPageBox.classList.add('hidden');
+        }
+
+        if (state.tabTitles && state.tabTitles[tabKey]) {
+          state.title = state.tabTitles[tabKey];
+        }
+        const titleInput = document.getElementById('sheetTitleInput');
+        if (titleInput) titleInput.value = state.title;
+
+        updatePrintPageStyle();
+        renderCard();
+      }
+    }
+
+    // ==========================================
+    // DRILL STUDIO: DRAWING & LIBRARY LOGIC
+    // ==========================================
+
+    function initCanvas() {
+      const canvas = document.getElementById('drillCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      const getPos = (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+          x: (clientX - rect.left) * scaleX,
+          y: (clientY - rect.top) * scaleY
+        };
+      };
+
+      const startDraw = (e) => {
+        e.preventDefault();
+        const pos = getPos(e);
+        isDrawing = true;
+        canvasStartX = pos.x;
+        canvasStartY = pos.y;
+        canvasSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        if (canvasTool === 'draw' || canvasTool === 'eraser') {
+          ctx.beginPath();
+          ctx.moveTo(pos.x, pos.y);
+        } else if (canvasTool === 'cone') {
+          drawCone(ctx, pos.x, pos.y);
+          saveCanvasToActiveDrill();
+          isDrawing = false;
+        } else if (canvasTool === 'offense') {
+          drawOffenseIcon(ctx, pos.x, pos.y);
+          saveCanvasToActiveDrill();
+          isDrawing = false;
+        } else if (canvasTool === 'defense') {
+          drawDefenseIcon(ctx, pos.x, pos.y);
+          saveCanvasToActiveDrill();
+          isDrawing = false;
+        } else if (canvasTool === 'ball') {
+          drawBallIcon(ctx, pos.x, pos.y);
+          saveCanvasToActiveDrill();
+          isDrawing = false;
+        }
+      };
+
+      const moveDraw = (e) => {
+        if (!isDrawing) return;
+        e.preventDefault();
+        const pos = getPos(e);
+
+        if (canvasTool === 'draw') {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3.5;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+        } else if (canvasTool === 'eraser') {
+          ctx.strokeStyle = '#15803d';
+          ctx.lineWidth = 20;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.lineTo(pos.x, pos.y);
+          ctx.stroke();
+        } else if (canvasTool === 'arrow') {
+          if (canvasSnapshot) ctx.putImageData(canvasSnapshot, 0, 0);
+          drawArrow(ctx, canvasStartX, canvasStartY, pos.x, pos.y);
+        }
+      };
+
+      const endDraw = (e) => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        saveCanvasToActiveDrill();
+      };
+
+      canvas.onmousedown = startDraw;
+      canvas.onmousemove = moveDraw;
+      canvas.onmouseup = endDraw;
+      canvas.onmouseleave = endDraw;
+
+      canvas.ontouchstart = startDraw;
+      canvas.ontouchmove = moveDraw;
+      canvas.ontouchend = endDraw;
+      canvas.ontouchcancel = endDraw;
+    }
+
+    function setCanvasTool(toolName) {
+      canvasTool = toolName;
+      const tools = ['draw', 'arrow', 'cone', 'offense', 'defense', 'ball', 'eraser'];
+      tools.forEach(t => {
+        const btn = document.getElementById(`tool-${t}`);
+        if (btn) {
+          if (t === toolName) {
+            btn.className = 'px-2 py-1 rounded font-bold bg-emerald-600 text-white';
+          } else {
+            btn.className = 'px-2 py-1 rounded font-bold hover:bg-slate-800 text-slate-300';
+          }
+        }
+      });
+    }
+
+    function clearCanvas() {
+      const canvas = document.getElementById('drillCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      saveCanvasToActiveDrill();
+      showToast('Canvas cleared', 'info');
+    }
+
+    function drawArrow(ctx, fromX, fromY, toX, toY) {
+      const headLength = 14;
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const angle = Math.atan2(dy, dx);
+      
+      ctx.strokeStyle = '#facc15';
+      ctx.fillStyle = '#facc15';
+      ctx.lineWidth = 3.5;
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.lineTo(toX, toY);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(toX, toY);
+      ctx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawCone(ctx, x, y) {
+      ctx.fillStyle = '#f97316';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x, y - 11);
+      ctx.lineTo(x - 9, y + 9);
+      ctx.lineTo(x + 9, y + 9);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function drawOffenseIcon(ctx, x, y) {
+      ctx.fillStyle = '#3b82f6';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('O', x, y);
+    }
+
+    function drawDefenseIcon(ctx, x, y) {
+      ctx.fillStyle = '#ef4444';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, 10, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('X', x, y);
+    }
+
+    function drawBallIcon(ctx, x, y) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-Math.PI / 4);
+      ctx.fillStyle = '#92400e';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 11, 6.5, 0, 0, 2 * Math.PI);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-5, 0);
+      ctx.lineTo(5, 0);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function saveCanvasToActiveDrill() {
+      const canvas = document.getElementById('drillCanvas');
+      if (!canvas) return;
+      const drill = drillLibrary.find(d => d.id === currentActiveDrillId);
+      if (drill) {
+        drill.drawingData = canvas.toDataURL('image/png');
+        saveLocalData();
+      }
+    }
+
+    function loadCanvasData(dataUrl) {
+      const canvas = document.getElementById('drillCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      };
+      img.src = dataUrl;
+    }
+
+    function renderDrillDirectory() {
+      const list = document.getElementById('drillDirectoryList');
+      if (!list) return;
+
+      const search = (document.getElementById('drillSearchInput')?.value || '').toLowerCase();
+      const filtered = drillLibrary.filter(d => {
+        const matchesCat = activeDrillFilter === 'ALL' || d.category === activeDrillFilter;
+        const matchesSearch = !search || d.name.toLowerCase().includes(search) || (d.category && d.category.toLowerCase().includes(search));
+        return matchesCat && matchesSearch;
+      });
+
+      list.innerHTML = filtered.map(d => {
+        const isActive = d.id === currentActiveDrillId;
+        const groupsTag = (d.groups || []).join(', ');
+        return `
+          <div onclick="loadDrillIntoStudio('${d.id}')" class="p-2.5 rounded-xl cursor-pointer border transition ${isActive ? 'bg-emerald-950/80 border-emerald-500 shadow-md ring-1 ring-emerald-500/40' : 'bg-slate-900/70 border-slate-700/80 hover:bg-slate-800'}">
+            <div class="flex items-center justify-between gap-1 mb-1">
+              <span class="text-[9.5px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">${d.category}</span>
+              ${d.drawingData ? '<span class="text-[9px] text-amber-400 font-bold" title="Has whiteboard diagram">🎨 Diagram</span>' : ''}
+            </div>
+            <div class="text-xs font-bold text-white truncate">${d.name}</div>
+            <div class="text-[10px] text-slate-400 truncate mt-0.5 font-medium">${groupsTag ? `👥 ${groupsTag}` : '👥 Team'}</div>
+          </div>
+        `;
+      }).join('');
+
+      updateStats();
+    }
+
+    function setDrillFilter(cat) {
+      activeDrillFilter = cat;
+      document.querySelectorAll('.drill-cat-filter').forEach(btn => {
+        if (btn.getAttribute('data-cat') === cat) {
+          btn.className = 'drill-cat-filter px-2 py-0.5 rounded-full bg-emerald-600 text-white font-bold whitespace-nowrap';
+        } else {
+          btn.className = 'drill-cat-filter px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 font-bold whitespace-nowrap';
+        }
+      });
+      renderDrillDirectory();
+    }
+
+    function filterDrillList() {
+      renderDrillDirectory();
+    }
+
+    function loadDrillIntoStudio(id) {
+      let drill = drillLibrary.find(d => d.id === id);
+      if (!drill) {
+        if (drillLibrary.length > 0) {
+          drill = drillLibrary[0];
+          currentActiveDrillId = drill.id;
+        } else {
+          return;
+        }
+      } else {
+        currentActiveDrillId = id;
+      }
+
+      const catInput = document.getElementById('drillCategoryInput');
+      const titleInput = document.getElementById('drillTitleInput');
+      const notesInput = document.getElementById('drillNotesInput');
+
+      if (catInput) catInput.value = drill.category || '';
+      if (titleInput) titleInput.value = drill.name || '';
+      if (notesInput) notesInput.value = drill.notes || '';
+
+      renderParticipantTags(drill.groups || []);
+      loadCanvasData(drill.drawingData);
+      renderDrillDirectory();
+    }
+
+    function renderParticipantTags(selectedGroups = []) {
+      const container = document.getElementById('participantTagGroup');
+      if (!container) return;
+
+      container.innerHTML = AVAILABLE_GROUPS.map(g => {
+        const isSelected = selectedGroups.includes(g);
+        return `
+          <button type="button" onclick="toggleParticipantGroup('${g}')" class="px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1 ${isSelected ? 'bg-emerald-600 text-white shadow-sm ring-1 ring-emerald-400' : 'bg-slate-900 border border-slate-700 text-slate-400 hover:text-slate-200'}">
+            <span>${isSelected ? '✓' : '+'}</span>
+            <span>${g}</span>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function toggleParticipantGroup(groupName) {
+      const drill = drillLibrary.find(d => d.id === currentActiveDrillId);
+      if (!drill) return;
+      if (!drill.groups) drill.groups = [];
+
+      const idx = drill.groups.indexOf(groupName);
+      if (idx >= 0) {
+        drill.groups.splice(idx, 1);
+      } else {
+        drill.groups.push(groupName);
+      }
+
+      renderParticipantTags(drill.groups);
+      saveLocalData();
+      renderDrillDirectory();
+    }
+
+    function saveCurrentDrillMeta(showConfirmation = false) {
+      const drill = drillLibrary.find(d => d.id === currentActiveDrillId);
+      if (!drill) return;
+
+      drill.category = (document.getElementById('drillCategoryInput')?.value || '').trim() || 'General';
+      drill.name = (document.getElementById('drillTitleInput')?.value || '').trim() || 'Untitled Drill';
+      drill.notes = (document.getElementById('drillNotesInput')?.value || '').trim();
+
+      saveLocalData();
+      renderDrillDirectory();
+      if (showConfirmation) {
+        showToast('Drill saved to library', 'success');
+      }
+    }
+
+    function createNewDrill() {
+      const newId = 'd' + Date.now();
+      const newDrill = {
+        id: newId,
+        category: 'Indy',
+        name: 'New Custom Drill',
+        groups: ['Team'],
+        notes: 'Coaching points, keys and alignment...',
+        drawingData: null
+      };
+
+      drillLibrary.unshift(newDrill);
+      currentActiveDrillId = newId;
+      saveLocalData();
+      loadDrillIntoStudio(newId);
+      showToast('New drill created', 'success');
+    }
+
+    function deleteCurrentDrill() {
+      if (drillLibrary.length <= 1) {
+        showToast('You must keep at least one drill in library', 'error');
+        return;
+      }
+
+      drillLibrary = drillLibrary.filter(d => d.id !== currentActiveDrillId);
+      currentActiveDrillId = drillLibrary[0].id;
+      saveLocalData();
+      loadDrillIntoStudio(currentActiveDrillId);
+      showToast('Drill removed from library', 'info');
+    }
+
+    // ==========================================
+    // PRACTICE PLANS: RENDERING & CONTROLS
+    // ==========================================
+
+    function getGearBadge(gear) {
+      if (gear === 'Full Pads') {
+        return `<span class="bg-red-600 text-white font-black text-[6.5pt] px-2 py-0.5 rounded shadow uppercase">💥 Full Pads</span>`;
+      } else if (gear === 'Helmets & Shoulder Pads') {
+        return `<span class="bg-amber-500 text-slate-950 font-black text-[6.5pt] px-2 py-0.5 rounded shadow uppercase">🛡️ Shells</span>`;
+      } else {
+        return `<span class="bg-blue-600 text-white font-black text-[6.5pt] px-2 py-0.5 rounded shadow uppercase">🧢 Helmets</span>`;
+      }
+    }
+
+    function renderPracticeDaysSetupControls() {
+      const container = document.getElementById('practiceDaysSetupList');
+      if (!container) return;
+
+      const titleInput = document.getElementById('practiceWeekInput');
+      if (titleInput) titleInput.value = practiceWeek.title || '';
+
+      container.innerHTML = practiceWeek.days.map((day, idx) => `
+        <div class="p-2.5 bg-slate-900 border border-slate-700 rounded-lg space-y-1.5">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-bold text-slate-400 w-5">#${idx + 1}</span>
+            <input type="text" value="${day.name}" onchange="updateDayName(${idx}, this.value)" class="flex-1 bg-slate-800 text-white font-bold text-xs rounded px-2 py-1 border border-slate-600 focus:ring-1 focus:ring-emerald-500 outline-none">
+            <select onchange="updateDayGear(${idx}, this.value)" class="bg-slate-800 text-white text-[10px] font-bold rounded px-1.5 py-1 border border-slate-600">
+              <option value="Helmets & Shoulder Pads" ${day.gear === 'Helmets & Shoulder Pads' ? 'selected' : ''}>Shells</option>
+              <option value="Full Pads" ${day.gear === 'Full Pads' ? 'selected' : ''}>Full Pads</option>
+              <option value="Helmets Only" ${day.gear === 'Helmets Only' ? 'selected' : ''}>Helmets</option>
+            </select>
+          </div>
+          <input type="text" value="${day.notes || ''}" placeholder="Focus / Subtitle note..." onchange="updateDayNotes(${idx}, this.value)" class="w-full bg-slate-800/80 text-slate-300 text-[10px] rounded px-2 py-0.5 border border-slate-700 outline-none">
+        </div>
+      `).join('');
+    }
+
+    function updateDayName(dayIdx, newName) {
+      if (practiceWeek.days[dayIdx]) {
+        practiceWeek.days[dayIdx].name = newName.trim();
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function updateDayGear(dayIdx, newGear) {
+      if (practiceWeek.days[dayIdx]) {
+        practiceWeek.days[dayIdx].gear = newGear;
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function updateDayNotes(dayIdx, notes) {
+      if (practiceWeek.days[dayIdx]) {
+        practiceWeek.days[dayIdx].notes = notes.trim();
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function updatePracticeSettings() {
+      const title = document.getElementById('practiceWeekInput')?.value;
+      if (title !== undefined) {
+        practiceWeek.title = title;
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function updateSlotDuration(dayIdx, slotIdx, newDuration) {
+      const slot = practiceWeek.days[dayIdx]?.slots[slotIdx];
+      if (slot) {
+        slot.duration = newDuration.trim();
+        saveLocalData();
+      }
+    }
+
+    function onInlineDrillSelect(dayIdx, slotIdx, value) {
+      if (value === '__MULTI__') {
+        openMultiDrillPicker(dayIdx, slotIdx);
+        return;
+      }
+      const slot = practiceWeek.days[dayIdx]?.slots[slotIdx];
+      if (slot) {
+        slot.drills = value ? [value] : [];
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function addSlotToDay(dayIdx) {
+      const day = practiceWeek.days[dayIdx];
+      if (!day) return;
+      day.slots.push({
+        time: "15m",
+        duration: "15m",
+        drills: ["Dynamic Warmup & Agility Ladders"]
+      });
+      saveLocalData();
+      renderCard();
+    }
+
+    function removeSlotFromDay(dayIdx, slotIdx) {
+      const day = practiceWeek.days[dayIdx];
+      if (!day || day.slots.length <= 1) {
+        showToast('Day must have at least one period', 'error');
+        return;
+      }
+      day.slots.splice(slotIdx, 1);
+      saveLocalData();
+      renderCard();
+    }
+
+    function openMultiDrillPicker(dayIdx, slotIdx) {
+      activeSlotEdit = { dayIdx, slotIdx };
+      const modal = document.getElementById('multiDrillModal');
+      const list = document.getElementById('multiDrillModalList');
+      const sub = document.getElementById('multiDrillModalSub');
+      if (!modal || !list) return;
+
+      const slot = practiceWeek.days[dayIdx]?.slots[slotIdx];
+      const selected = slot ? (slot.drills || []) : [];
+
+      if (sub) sub.innerText = `${practiceWeek.days[dayIdx]?.name || 'Practice'} • Period ${slotIdx + 1}`;
+
+      list.innerHTML = drillLibrary.map(d => {
+        const isChecked = selected.includes(d.name);
+        return `
+          <label class="flex items-center gap-2 p-2 rounded hover:bg-slate-800 cursor-pointer border border-slate-700/60">
+            <input type="checkbox" value="${d.name}" ${isChecked ? 'checked' : ''} class="multi-drill-cb w-4 h-4 text-emerald-600 rounded bg-slate-900 border-slate-600">
+            <div class="flex-1 truncate">
+              <span class="text-[10px] font-black uppercase text-emerald-400 mr-1.5">[${d.category}]</span>
+              <span class="text-xs font-bold text-slate-100">${d.name}</span>
+              <span class="text-[10px] text-slate-400 block mt-0.5">👥 ${(d.groups || []).join(', ') || 'Team'}</span>
+            </div>
+          </label>
+        `;
+      }).join('');
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeMultiDrillModal() {
+      const modal = document.getElementById('multiDrillModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function saveMultiDrillSelection() {
+      const selected = [];
+      document.querySelectorAll('.multi-drill-cb:checked').forEach(cb => {
+        selected.push(cb.value);
+      });
+      applyDrillSelection(selected);
+    }
+
+    function applyDrillSelection(selectedDrills) {
+      const { dayIdx, slotIdx } = activeSlotEdit;
+      const slot = practiceWeek.days[dayIdx]?.slots[slotIdx];
+      if (slot) {
+        slot.drills = selectedDrills;
+        saveLocalData();
+        renderCard();
+      }
+      closeMultiDrillModal();
+    }
+
+    function renderHalfPagePracticeCards() {
+      // Helper to retrieve personnel tags string for a drill
+      const getDrillPersonnelBadge = (drillName) => {
+        const found = drillLibrary.find(d => d.name === drillName);
+        if (!found || !found.groups || found.groups.length === 0) return '';
+        return `<span class="inline-block bg-slate-200 text-slate-800 text-[5.5pt] font-black px-1 py-[0.5px] rounded border border-slate-300 ml-1 uppercase whitespace-nowrap">${found.groups.join(', ')}</span>`;
+      };
+
+      // Renders 4 Half-Page Day Cards (2 side-by-side per Landscape Letter Sheet)
+      return `
+        <div class="w-full h-full flex flex-col gap-2 overflow-y-auto pr-1">
+          <div class="border-b-2 border-slate-900 pb-1 mb-1 flex items-center justify-between">
+            <span class="font-black text-sm uppercase tracking-wide text-slate-950">${practiceWeek.title || 'WEEKLY PRACTICE PLAN'}</span>
+            <span class="text-[8pt] text-slate-500 font-bold uppercase tracking-wider">4-Day Plan • 2 Hours/Day (Letter Landscape 11" × 8.5")</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            ${practiceWeek.days.map((day, dIdx) => `
+              <div class="print-half-page border-2 border-slate-900 rounded-xl p-2.5 bg-white flex flex-col justify-between shadow-xs">
+                
+                <!-- DAY HEADER -->
+                <div class="border-b-2 border-slate-900 pb-1.5 mb-1.5 flex items-center justify-between">
+                  <div class="flex-1 mr-2">
+                    <h3 class="font-black text-[10pt] text-slate-950 leading-none uppercase">${day.name}</h3>
+                    <input type="text" value="${day.notes || ''}" placeholder="Click to edit day focus / notes..." onchange="updateDayNotes(${dIdx}, this.value)" class="w-full bg-transparent border-0 text-[7pt] text-slate-600 font-bold p-0 mt-0.5 outline-none focus:bg-emerald-50 focus:ring-1 focus:ring-emerald-500 rounded px-1" title="Click to edit day notes">
+                  </div>
+                  <div>${getGearBadge(day.gear)}</div>
+                </div>
+
+                <!-- SLOTS SCHEDULE TABLE -->
+                <div class="flex-1 space-y-1">
+                  <table class="w-full border-collapse text-[7pt]">
+                    <thead>
+                      <tr class="bg-slate-900 text-white font-black text-left text-[6.5pt]">
+                        <th class="p-1 w-10 border-r border-slate-700 text-center">PERIOD</th>
+                        <th class="p-1 w-12 border-r border-slate-700 text-center">DURATION</th>
+                        <th class="p-1">DRILL(S) / SCRIPT / STATION FOCUS</th>
+                        <th class="p-1 w-8 text-center no-print">EDIT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${day.slots.map((slot, sIdx) => {
+                        const isEven = sIdx % 2 === 0;
+                        const drillNames = (slot.drills && slot.drills.length > 0) ? slot.drills : ["-- Free Period / Water --"];
+                        const isSplit = drillNames.length > 1;
+
+                        const personnelBadges = (slot.drills || []).map(name => {
+                          const found = drillLibrary.find(d => d.name === name);
+                          if (!found || !found.groups || found.groups.length === 0) return '';
+                          return `<span class="bg-emerald-100 text-emerald-900 border border-emerald-300 px-1 py-[0.5px] rounded text-[6pt] font-black uppercase whitespace-nowrap">${found.groups.join('/')}</span>`;
+                        }).filter(Boolean).join(' ');
+
+                        return `
+                          <tr class="${isEven ? 'bg-slate-50' : 'bg-white'} border-b border-slate-300">
+                            <td class="p-1 font-black text-slate-900 border-r border-slate-300 text-center whitespace-nowrap">
+                              P${sIdx + 1}
+                            </td>
+                            <td class="p-1 text-center font-bold text-slate-700 border-r border-slate-300">
+                              <input type="text" value="${slot.duration}" onchange="updateSlotDuration(${dIdx}, ${sIdx}, this.value)" class="w-10 text-center bg-transparent border-0 font-bold text-[7pt] text-slate-800 outline-none focus:bg-emerald-50 focus:ring-1 focus:ring-emerald-500 rounded">
+                            </td>
+                            <td class="p-1 border-r border-slate-300">
+                              <div class="flex items-center justify-between gap-1">
+                                <select onchange="onInlineDrillSelect(${dIdx}, ${sIdx}, this.value)" class="flex-1 bg-transparent border-0 font-extrabold text-[7pt] text-slate-900 outline-none cursor-pointer truncate">
+                                  ${isSplit ? `<option value="__MULTI__" selected>⚡ Split (${drillNames.length} Drills): ${drillNames.join(' + ')}</option>` : ''}
+                                  <option value="">-- Select Drill --</option>
+                                  ${drillLibrary.map(d => `
+                                    <option value="${d.name}" ${(!isSplit && drillNames[0] === d.name) ? 'selected' : ''}>${d.category} - ${d.name} (${(d.groups || []).join('/')})</option>
+                                  `).join('')}
+                                  <option value="__MULTI__">➕ Split Drills (Select Multiple)...</option>
+                                </select>
+                                ${personnelBadges ? `<div class="shrink-0 flex items-center gap-1">${personnelBadges}</div>` : ''}
+                              </div>
+                            </td>
+                            <td class="p-1 text-center no-print">
+                              <button onclick="removeSlotFromDay(${dIdx}, ${sIdx})" class="text-red-500 hover:text-red-700 font-black text-xs" title="Remove block">&times;</button>
+                            </td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+
+                <!-- DAY CARD FOOTER -->
+                <div class="mt-2 pt-1.5 border-t border-slate-300 flex justify-between items-center text-[6pt] text-slate-600 font-bold">
+                  <span>Hydration breaks scheduled every 30 mins</span>
+                  <div class="flex gap-2">
+                    <button onclick="openMultiDrillPicker(${dIdx}, 0)" class="no-print bg-slate-100 hover:bg-slate-200 text-slate-800 px-2 py-0.5 rounded border border-slate-300">
+                      ⚡ Combine / Multi-Drill
+                    </button>
+                    <button onclick="addSlotToDay(${dIdx})" class="no-print bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-0.5 rounded font-bold">
+                      + Add Period
+                    </button>
+                  </div>
+                </div>
+
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // ==========================================
+    // PRACTICE & DRILL PACKET PRINT ENGINE
+    // ==========================================
+
+    function openPracticePrintModal() {
+      const modal = document.getElementById('practicePrintModal');
+      const list = document.getElementById('drillPrintChecklist');
+      if (!modal || !list) return;
+
+      // Populate drills list with checkboxes
+      list.innerHTML = drillLibrary.map(d => {
+        const hasSketch = !!d.drawingData;
+        return `
+          <label class="flex items-center gap-2.5 p-1.5 rounded hover:bg-slate-800 cursor-pointer">
+            <input type="checkbox" value="${d.id}" checked class="drill-print-item-cb w-3.5 h-3.5 text-emerald-600 rounded bg-slate-900 border-slate-600">
+            <span class="text-[9.5px] font-black uppercase text-emerald-400 bg-emerald-500/10 px-1 py-0.5 rounded border border-emerald-500/20">${d.category}</span>
+            <span class="text-xs font-bold text-slate-200 truncate flex-1">${d.name}</span>
+            ${hasSketch ? '<span class="text-[9px] text-amber-400 font-bold">🎨 Diagram</span>' : ''}
+          </label>
+        `;
+      }).join('');
+
+      modal.classList.remove('hidden');
+    }
+
+    function closePracticePrintModal() {
+      const modal = document.getElementById('practicePrintModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function toggleDrillsPrintSection(isChecked) {
+      const wrapper = document.getElementById('drillSelectionWrapper');
+      if (wrapper) {
+        if (isChecked) wrapper.classList.remove('opacity-50', 'pointer-events-none');
+        else wrapper.classList.add('opacity-50', 'pointer-events-none');
+      }
+    }
+
+    function selectAllDrillsForPrint(checkAll) {
+      document.querySelectorAll('.drill-print-item-cb').forEach(cb => {
+        cb.checked = checkAll;
+      });
+    }
+
+    function selectWeekScheduledDrills() {
+      const scheduledNames = new Set();
+      practiceWeek.days.forEach(day => {
+        (day.slots || []).forEach(slot => {
+          (slot.drills || []).forEach(name => scheduledNames.add(name));
+        });
+      });
+
+      document.querySelectorAll('.drill-print-item-cb').forEach(cb => {
+        const drill = drillLibrary.find(d => d.id === cb.value);
+        cb.checked = drill && scheduledNames.has(drill.name);
+      });
+    }
+
+    function executePracticeAndDrillsPrint() {
+      const includeSchedule = document.getElementById('printOptSchedule')?.checked;
+      const includeDrills = document.getElementById('printOptDrills')?.checked;
+
+      const selectedDrillIds = [];
+      if (includeDrills) {
+        document.querySelectorAll('.drill-print-item-cb:checked').forEach(cb => {
+          selectedDrillIds.push(cb.value);
+        });
+      }
+
+      if (!includeSchedule && selectedDrillIds.length === 0) {
+        showToast('Please select at least the schedule or one drill to print', 'error');
+        return;
+      }
+
+      closePracticePrintModal();
+
+      let printTarget = document.getElementById('printTargetArea');
+      if (!printTarget) {
+        printTarget = document.createElement('div');
+        printTarget.id = 'printTargetArea';
+        document.body.appendChild(printTarget);
+      }
+
+      const getGearBadgePrint = (gear) => {
+        if (gear === 'Full Pads') {
+          return `<span style="background:#dc2626; color:white; padding:1.5px 5px; border-radius:3px; font-weight:900; font-size:6.5pt; text-transform:uppercase;">💥 Full Pads</span>`;
+        } else if (gear === 'Helmets & Shoulder Pads') {
+          return `<span style="background:#f59e0b; color:#0f172a; padding:1.5px 5px; border-radius:3px; font-weight:900; font-size:6.5pt; text-transform:uppercase;">🛡️ Shells</span>`;
+        } else {
+          return `<span style="background:#2563eb; color:white; padding:1.5px 5px; border-radius:3px; font-weight:900; font-size:6.5pt; text-transform:uppercase;">🧢 Helmets</span>`;
+        }
+      };
+
+      const getPrintDrillWithPersonnel = (slot) => {
+        if (!slot.drills || slot.drills.length === 0) {
+          return '<span style="color:#64748b; font-style:italic;">-- Free / Water --</span>';
+        }
+        return slot.drills.map(drillName => {
+          const found = drillLibrary.find(d => d.name === drillName);
+          const groupsTag = (found && found.groups && found.groups.length > 0)
+            ? `<span style="background:#065f46; color:#ffffff; font-size:5.5pt; font-weight:900; padding:1px 4px; border-radius:3px; margin-left:4px; text-transform:uppercase; letter-spacing:0.3px; display:inline-block; white-space:nowrap; vertical-align:middle;">[${found.groups.join('/')}]</span>`
+            : '';
+          return `<span style="display:inline-block; margin-right:4px;">${drillName} ${groupsTag}</span>`;
+        }).join('<span style="color:#047857; font-weight:900; margin:0 3px;">+</span>');
+      };
+
+      const renderPrintDayCompact = (day) => `
+        <div style="border: 1.5px solid #0f172a; border-radius: 6px; padding: 6px 8px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; background: white; overflow: hidden;">
+          <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1.5px solid #0f172a; padding-bottom: 3px; margin-bottom: 3px;">
+            <div style="flex: 1; margin-right: 6px; overflow: hidden;">
+              <h2 style="font-size: 8.5pt; font-weight: 900; margin: 0; text-transform: uppercase; line-height: 1.1; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${day.name}</h2>
+              <div style="font-size: 6pt; color: #475569; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px;">${day.notes || ''}</div>
+            </div>
+            <div>
+              ${getGearBadgePrint(day.gear)}
+            </div>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 6.5pt; flex: 1;">
+            <thead>
+              <tr style="background: #0f172a; color: white; font-weight: 900; text-align: left;">
+                <th style="padding: 2.5px 4px; width: 32px; text-align: center; border-right: 1px solid #334155;">PERIOD</th>
+                <th style="padding: 2.5px 4px; width: 36px; text-align: center; border-right: 1px solid #334155;">TIME</th>
+                <th style="padding: 2.5px 4px;">DRILL(S) & PERSONNEL FOCUS</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${day.slots.map((s, sIdx) => `
+                <tr style="border-bottom: 1px solid #cbd5e1; background: ${sIdx % 2 === 1 ? '#f8fafc' : 'white'};">
+                  <td style="padding: 2.5px 4px; font-weight: 900; text-align: center; color: #0f172a; border-right: 1px solid #cbd5e1;">P${sIdx + 1}</td>
+                  <td style="padding: 2.5px 4px; text-align: center; font-weight: bold; color: #334155; border-right: 1px solid #cbd5e1;">${s.duration}</td>
+                  <td style="padding: 2.5px 4px; font-weight: 800; color: #0f172a; line-height: 1.2;">${getPrintDrillWithPersonnel(s)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 2px; margin-top: 2px; display: flex; justify-content: space-between; font-size: 5.5pt; font-weight: bold; color: #64748b;">
+            <span>Hydration: Every 30m</span>
+            <span>Football Roster</span>
+          </div>
+        </div>
+      `;
+
+      let outputHTML = '';
+
+      // 1. PRACTICE PLAN PAGE (ALL 4 DAYS ON A SINGLE 11" x 8.5" LANDSCAPE SHEET)
+      if (includeSchedule) {
+        outputHTML += `
+          <div class="${selectedDrillIds.length > 0 ? 'print-page-break' : ''} print-landscape-page" style="width: 11in; height: 8.5in; max-height: 8.5in; padding: 0.25in; box-sizing: border-box; background: white; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden;">
+            
+            <!-- HEADER BAR MATCHING PREVIEW -->
+            <div style="border-bottom: 2px solid #0f172a; padding-bottom: 4px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h1 style="font-size: 11pt; font-weight: 900; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #0f172a; line-height: 1;">
+                  ${practiceWeek.title || 'WEEKLY PRACTICE PLAN'}
+                </h1>
+                <span style="font-size: 6.5pt; font-weight: bold; color: #64748b; text-transform: uppercase;">
+                  Weekly 4-Day Master Schedule • 2 Hours/Day • Full Overview
+                </span>
+              </div>
+              <div style="text-align: right; font-size: 6.5pt; font-weight: 800; color: #334155;">
+                <span>Letter Landscape (11" × 8.5")</span>
+              </div>
+            </div>
+
+            <!-- 2x2 GRID CONTAINING ALL 4 DAYS -->
+            <div style="flex: 1; display: grid; grid-template-columns: repeat(2, 1fr); grid-template-rows: repeat(2, 1fr); gap: 8px; overflow: hidden;">
+              ${renderPrintDayCompact(practiceWeek.days[0])}
+              ${renderPrintDayCompact(practiceWeek.days[1])}
+              ${renderPrintDayCompact(practiceWeek.days[2])}
+              ${renderPrintDayCompact(practiceWeek.days[3])}
+            </div>
+
+            <!-- FOOTER BAR -->
+            <div style="border-top: 1px solid #0f172a; padding-top: 3px; margin-top: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 6pt; font-weight: 800; color: #475569;">
+              <span>Head Coach Signature: ___________________________</span>
+              <span>Training Staff / Safety: Certified</span>
+              <span>Practice Overview Card</span>
+            </div>
+          </div>
+        `;
+      }
+
+      // 2. DRILL DETAIL CARDS (2 DRILLS PER LANDSCAPE PAGE)
+      if (selectedDrillIds.length > 0) {
+        const drillsToPrint = drillLibrary.filter(d => selectedDrillIds.includes(d.id));
+        for (let i = 0; i < drillsToPrint.length; i += 2) {
+          const d1 = drillsToPrint[i];
+          const d2 = drillsToPrint[i + 1];
+
+          const renderSingleDrillPrintCard = (drill) => {
+            if (!drill) return `<div style="flex: 1;"></div>`;
+            return `
+              <div style="flex: 1; border: 2.5px solid #059669; border-radius: 8px; padding: 10px 12px; height: 100%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box; background: #ffffff;">
+                <div style="border-bottom: 2px solid #059669; padding-bottom: 5px; margin-bottom: 6px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="background: #059669; color: white; padding: 2px 8px; border-radius: 4px; font-weight: 900; font-size: 7.5pt; text-transform: uppercase;">
+                      ${drill.category}
+                    </span>
+                    <span style="font-size: 8pt; font-weight: 900; color: #047857;">
+                      ${(drill.groups || []).join(' • ') || 'Team'}
+                    </span>
+                  </div>
+                  <h3 style="font-size: 13pt; font-weight: 900; margin: 4px 0 0 0; color: #0f172a; text-transform: uppercase;">${drill.name}</h3>
+                </div>
+
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 8px; overflow: hidden;">
+                  ${drill.drawingData ? `
+                    <div style="height: 190px; width: 100%; border: 1.5px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: #15803d; display: flex; align-items: center; justify-content: center;">
+                      <img src="${drill.drawingData}" style="max-height: 100%; max-width: 100%; object-fit: contain;">
+                    </div>
+                  ` : `
+                    <div style="height: 120px; width: 100%; border: 1.5px dashed #94a3b8; border-radius: 6px; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 8pt; font-weight: bold; background: #f8fafc;">
+                      No diagram drawn for this drill
+                    </div>
+                  `}
+
+                  <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; font-size: 8pt; color: #1e293b;">
+                    <strong style="display: block; font-size: 7.5pt; text-transform: uppercase; color: #047857; margin-bottom: 2px;">Coaching Points & Keys:</strong>
+                    <div style="line-height: 1.35; font-weight: 600;">${drill.notes || 'No specific coaching keys recorded.'}</div>
+                  </div>
+                </div>
+
+                <div style="border-top: 1px solid #cbd5e1; padding-top: 4px; margin-top: 6px; display: flex; justify-content: space-between; font-size: 7pt; color: #64748b; font-weight: bold;">
+                  <span>Football Roster Drill Studio</span>
+                  <span>Practice Detail Reference</span>
+                </div>
+              </div>
+            `;
+          };
+
+          const isLast = (i + 2) >= drillsToPrint.length;
+          outputHTML += `
+            <div class="${isLast ? '' : 'print-page-break'} print-landscape-page" style="width: 11in; height: 8.5in; max-height: 8.5in; padding: 0.35in; box-sizing: border-box; background: white; display: flex; gap: 0.3in;">
+              ${renderSingleDrillPrintCard(d1)}
+              <div style="width: 1px; border-left: 2px dashed #94a3b8; height: 100%; margin: 0 4px; position: relative;">
+                <span style="position: absolute; top: 50%; left: -60px; transform: rotate(-90deg); background: white; padding: 2px 6px; font-size: 7pt; color: #64748b; font-weight: bold; white-space: nowrap;">✂️ CUT LINE (DRILL CARD SPLIT)</span>
+              </div>
+              ${renderSingleDrillPrintCard(d2)}
+            </div>
+          `;
+        }
+      }
+
+      printTarget.innerHTML = outputHTML;
+
+      let styleEl = document.getElementById('practiceHalfPagePrintStyle');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'practiceHalfPagePrintStyle';
+        document.head.appendChild(styleEl);
+      }
+
+      styleEl.innerHTML = `
+        @media print {
+          @page { size: letter landscape !important; margin: 0 !important; }
+          html, body {
+            width: 11in !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #ffffff !important;
+          }
+          header, main, aside, section, .no-print, #drillStudioContainer, #standardAppContainer, #multiDrillModal, #rosterModal, #bulkPasteModal, #practicePrintModal, #imageDownloadModal {
+            display: none !important;
+          }
+          #printTargetArea {
+            display: block !important;
+          }
+          .print-landscape-page {
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            page-break-after: always !important;
+            break-after: page !important;
+            box-sizing: border-box !important;
+          }
+        }
+      `;
+
+      setTimeout(() => {
+        window.focus();
+        window.print();
+        setTimeout(() => {
+          styleEl.innerHTML = '';
+        }, 1200);
+      }, 250);
+    }
+
+    function printPracticePlanHalfPages() {
+      openPracticePrintModal();
+    }
+
+    // ==========================================
+    // OTHER APP VIEWS (ROSTER, DEPTH, CARDS)
+    // ==========================================
+
+    function setOrientation(orientation) {
+      state.orientation = orientation;
+      const btnP = document.getElementById('btnPortrait');
+      const btnL = document.getElementById('btnLandscape');
+
+      if (orientation === 'landscape') {
+        btnL.className = 'flex items-center justify-center space-x-1.5 py-2 px-3 border rounded-lg text-xs font-bold transition bg-blue-600/30 border-blue-500 text-white';
+        btnP.className = 'flex items-center justify-center space-x-1.5 py-2 px-3 border rounded-lg text-xs font-bold transition bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700';
+      } else {
+        btnP.className = 'flex items-center justify-center space-x-1.5 py-2 px-3 border rounded-lg text-xs font-bold transition bg-blue-600/30 border-blue-500 text-white';
+        btnL.className = 'flex items-center justify-center space-x-1.5 py-2 px-3 border rounded-lg text-xs font-bold transition bg-slate-800 border-slate-600 text-slate-400 hover:bg-slate-700';
+      }
+
+      updatePrintPageStyle();
+      saveLocalData();
+      renderCard();
+    }
+
+    function updateSettings() {
+      state.title = document.getElementById('sheetTitleInput').value;
+      if (!state.tabTitles) state.tabTitles = {};
+      state.tabTitles[state.activeTab] = state.title;
+
+      state.density = parseInt(document.getElementById('densitySlider').value, 10);
+      const densityLabels = { 1: 'Compact', 2: 'Normal', 3: 'Spacious' };
+      document.getElementById('densityVal').innerText = densityLabels[state.density] || 'Compact';
+
+      saveLocalData();
+      renderCard();
+    }
+
+    function updatePrintPageStyle() {
+      let styleEl = document.getElementById('dynamicPrintStyle');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'dynamicPrintStyle';
+        document.head.appendChild(styleEl);
+      }
+
+      const activeUnitBadge = document.getElementById('activeUnitBadge');
+      
+      if (state.activeTab === 'practice') {
+        if (activeUnitBadge) activeUnitBadge.innerText = 'Letter Landscape (11" × 8.5")';
+        styleEl.innerHTML = `
+          @media print {
+            @page {
+              size: letter landscape !important;
+              margin: 0.15in !important;
+            }
+            .clipboard-card {
+              width: 11.0in !important;
+              height: 8.5in !important;
+              padding: 0.25in !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+          }
+        `;
+      } else if (state.activeTab === 'preferences' || state.activeTab === 'rostersheet') {
+        const isLandscape = state.orientation === 'landscape' || state.activeTab === 'rostersheet';
+        if (activeUnitBadge) activeUnitBadge.innerText = `Letter (${isLandscape ? '11×8.5' : '8.5×11'})`;
+        styleEl.innerHTML = `
+          @media print {
+            @page {
+              size: letter ${isLandscape ? 'landscape' : 'portrait'};
+              margin: 0.15in;
+            }
+            .clipboard-card {
+              width: 100% !important;
+              height: auto !important;
+              max-height: ${isLandscape ? '8.2in' : '10.5in'} !important;
+              padding: 0 !important;
+              border: none !important;
+              box-shadow: none !important;
+            }
+          }
+        `;
+      } else {
+        if (activeUnitBadge) activeUnitBadge.innerText = '6" × 4" Clipboard';
+        const sizeStr = state.orientation === 'landscape' ? '6in 4in' : '4in 6in';
+        styleEl.innerHTML = `
+          @media print {
+            @page {
+              size: ${sizeStr};
+              margin: 0;
+            }
+            .clipboard-card {
+              width: ${state.orientation === 'landscape' ? '6.0in' : '4.0in'} !important;
+              height: ${state.orientation === 'landscape' ? '4.0in' : '6.0in'} !important;
+              padding: 0.12in !important;
+            }
+          }
+        `;
+      }
+    }
+
+    function getBadgedPositionsInTab(num, tabKey) {
+      const assignments = depthAssignments[tabKey] || {};
+      const positions = depthFormations[tabKey] || [];
+      const badges = [];
+
+      positions.forEach(pos => {
+        const arr = assignments[pos.code] || [];
+        arr.forEach((pNum, stringIdx) => {
+          if (String(pNum) === String(num)) {
+            let badgeClass = "";
+            if (tabKey === 'offense') {
+              if (stringIdx === 0) badgeClass = "bg-emerald-600 text-white font-black"; 
+              else if (stringIdx === 1) badgeClass = "bg-white text-slate-950 border border-emerald-600 font-black"; 
+              else if (stringIdx === 2) badgeClass = "bg-amber-800 text-white font-black"; 
+              else badgeClass = "bg-purple-600 text-white font-black"; 
+            } else if (tabKey === 'defense') {
+              if (stringIdx === 0) badgeClass = "bg-slate-950 text-white font-black"; 
+              else if (stringIdx === 1) badgeClass = "bg-amber-400 text-slate-950 font-black"; 
+              else if (stringIdx === 2) badgeClass = "bg-amber-800 text-white font-black"; 
+              else badgeClass = "bg-purple-600 text-white font-black"; 
+            } else if (tabKey === 'kickoff') {
+              if (stringIdx === 0) badgeClass = "bg-red-600 text-white font-black"; 
+              else badgeClass = "bg-red-50 text-red-900 border border-red-300 font-bold";
+            } else if (tabKey === 'kickreturn') {
+              if (stringIdx === 0) badgeClass = "bg-blue-600 text-white font-black"; 
+              else badgeClass = "bg-blue-50 text-blue-900 border border-blue-300 font-bold";
+            } else if (tabKey === 'puntreturn') {
+              if (stringIdx === 0) badgeClass = "bg-teal-600 text-white font-black"; 
+              else badgeClass = "bg-teal-50 text-teal-900 border border-teal-300 font-bold";
+            } else if (tabKey === 'punt') {
+              if (stringIdx === 0) badgeClass = "bg-orange-600 text-white font-black"; 
+              else badgeClass = "bg-orange-50 text-orange-900 border border-orange-300 font-bold";
+            }
+
+            const strText = stringIdx === 0 ? '' : stringIdx === 3 ? ' (D)' : ` (${stringIdx + 1})`;
+            badges.push(`<span class="${badgeClass} px-1 py-[0.5px] rounded text-[6.5pt] shadow-sm inline-block whitespace-nowrap m-[0.5px]">${pos.code}${strText}</span>`);
+          }
+        });
+      });
+
+      if (badges.length === 0) return '<span class="text-slate-300 text-[6.5pt] italic">--</span>';
+      return badges.join(' ');
+    }
+
+    function getPlayerPositionsDetailed(num) {
+      const res = { offense: [], defense: [], kickoff: [], kickreturn: [], puntreturn: [], punt: [] };
+      ['offense', 'defense', 'kickoff', 'kickreturn', 'puntreturn', 'punt'].forEach(tabKey => {
+        const assignments = depthAssignments[tabKey] || {};
+        const positions = depthFormations[tabKey] || [];
+
+        positions.forEach(pos => {
+          const arr = assignments[pos.code] || [];
+          arr.forEach((pNum, stringIdx) => {
+            if (String(pNum) === String(num)) {
+              res[tabKey].push({ code: pos.code, stringIdx });
+            }
+          });
+        });
+      });
+      return res;
+    }
+
+    function sortRosterByNumber() {
+      players.sort((a, b) => parseInt(a.num || 0, 10) - parseInt(b.num || 0, 10));
+      saveLocalData();
+      renderCard();
+      showToast('Roster sorted by number', 'success');
+    }
+
+    function updatePositionCode(unit, oldCode, newCode) {
+      newCode = newCode.trim();
+      if (!newCode || oldCode === newCode) return;
+
+      const posList = depthFormations[unit];
+      if (posList) {
+        const target = posList.find(p => p.code === oldCode);
+        if (target) target.code = newCode;
+      }
+
+      if (depthAssignments[unit] && depthAssignments[unit][oldCode]) {
+        depthAssignments[unit][newCode] = depthAssignments[unit][oldCode];
+        delete depthAssignments[unit][oldCode];
+      }
+
+      saveLocalData();
+      renderAssignControls();
+      renderCard();
+    }
+
+    function updatePositionLabel(unit, posCode, newLabel) {
+      const target = depthFormations[unit]?.find(p => p.code === posCode);
+      if (target) {
+        target.label = newLabel.trim();
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function updateDepthAssignment(unit, posCode, stringIdx, playerNum) {
+      if (!depthAssignments[unit]) depthAssignments[unit] = {};
+      if (!depthAssignments[unit][posCode]) depthAssignments[unit][posCode] = ["", "", "", ""];
+      depthAssignments[unit][posCode][stringIdx] = playerNum;
+      saveLocalData();
+      renderCard();
+    }
+
+    function renderAssignControls() {
+      const activeKey = state.activeTab;
+      if (!['offense', 'defense', 'kickoff', 'kickreturn', 'puntreturn', 'punt'].includes(activeKey)) return;
+
+      const titleEl = document.getElementById('depthAssignTitle');
+      if (titleEl) titleEl.innerText = `Assign ${activeKey.toUpperCase()} Positions`;
+
+      const container = document.getElementById('depthAssignControls');
+      if (!container) return;
+
+      const positions = depthFormations[activeKey] || [];
+      const assignments = depthAssignments[activeKey] || {};
+
+      let stringLabels = ['1st', '2nd', '3rd', 'Diamond'];
+      if (activeKey === 'offense') {
+        stringLabels = ['Green O', 'White O', 'Brown O', 'Diamond'];
+      } else if (activeKey === 'defense') {
+        stringLabels = ['Black D', 'Yellow D', 'Brown D', 'Diamond'];
+      }
+
+      let html = '';
+      positions.forEach(pos => {
+        const currentAssign = assignments[pos.code] || ["", "", "", ""];
+        
+        html += `
+          <div class="p-2 bg-slate-900 border border-slate-700 rounded-lg space-y-1.5">
+            <div class="grid grid-cols-12 gap-1.5 items-center">
+              <input type="text" value="${pos.code}" onchange="updatePositionCode('${activeKey}', '${pos.code}', this.value)" class="col-span-4 bg-blue-900 text-blue-100 border border-blue-500 text-[11px] font-black rounded px-1.5 py-0.5 focus:ring-1 focus:ring-blue-400 uppercase">
+              <input type="text" value="${pos.label}" onchange="updatePositionLabel('${activeKey}', '${pos.code}', this.value)" class="col-span-8 bg-slate-800 text-slate-100 border border-slate-600 text-[11px] font-semibold rounded px-1.5 py-0.5 focus:ring-1 focus:ring-blue-400">
+            </div>
+            
+            <div class="grid grid-cols-4 gap-1">
+              ${[0, 1, 2, 3].map(strIdx => `
+                <select onchange="updateDepthAssignment('${activeKey}', '${pos.code}', ${strIdx}, this.value)" class="bg-slate-800 border border-slate-600 text-[9px] rounded p-1 font-medium text-slate-100">
+                  <option value="">-- ${stringLabels[strIdx]} --</option>
+                  ${players.map(p => `
+                    <option value="${p.num}" ${String(currentAssign[strIdx]) === String(p.num) ? 'selected' : ''}>#${p.num} ${p.firstName}</option>
+                  `).join('')}
+                </select>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function changeCardPage(delta) {
+      if (state.activeTab === 'playercards') {
+        const maxPage = Math.max(0, Math.ceil(players.length / 4) - 1);
+        state.cardPage = Math.max(0, Math.min(maxPage, (state.cardPage || 0) + delta));
+      }
+      renderCard();
+    }
+
+    function renderCard() {
+      const card = document.getElementById('clipboardCard');
+      const cardTitle = document.getElementById('cardTitle');
+      const tableContainer = document.getElementById('tableContainer');
+      const previewLabel = document.getElementById('previewTabLabel');
+      const cardPageIndicator = document.getElementById('cardPageIndicator');
+
+      if (!card || !tableContainer) return;
+
+      if (cardTitle) cardTitle.innerText = state.title || 'ROSTER';
+
+      // Dimensions & padding adjustments
+      if (state.activeTab === 'preferences') {
+        if (state.orientation === 'landscape') {
+          card.style.width = '11.0in';
+          card.style.height = '8.5in';
+          card.style.padding = '0.2in';
+          if (previewLabel) previewLabel.innerText = 'Roster Overview Preview (Letter Landscape 11" × 8.5")';
+        } else {
+          card.style.width = '8.5in';
+          card.style.height = '11.0in';
+          card.style.padding = '0.25in';
+          if (previewLabel) previewLabel.innerText = 'Roster Overview Preview (Letter Portrait 8.5" × 11")';
+        }
+      } else if (state.activeTab === 'practice') {
+        card.style.width = '11.0in';
+        card.style.height = '8.5in';
+        card.style.padding = '0.25in';
+        if (previewLabel) previewLabel.innerText = 'Practice Plan (Half-Page Cards, Letter Landscape 11" × 8.5")';
+      } else if (state.activeTab === 'rostersheet') {
+        card.style.width = '11.0in';
+        card.style.height = '8.5in';
+        card.style.padding = '0.15in';
+        if (previewLabel) previewLabel.innerText = 'Game Day Participation Sheet (Letter Landscape 11" × 8.5")';
+      } else {
+        if (state.orientation === 'landscape') {
+          card.style.width = '6.0in';
+          card.style.height = '4.0in';
+          card.style.padding = '0.1in';
+          if (previewLabel) previewLabel.innerText = 'Clipboard Card (6" × 4" Landscape)';
+        } else {
+          card.style.width = '4.0in';
+          card.style.height = '6.0in';
+          card.style.padding = '0.1in';
+          if (previewLabel) previewLabel.innerText = 'Clipboard Card (4" × 6" Portrait)';
+        }
+      }
+
+      // TAB CONTENT ROUTING
+      if (state.activeTab === 'practice') {
+        tableContainer.innerHTML = renderHalfPagePracticeCards();
+      } else if (state.activeTab === 'playercards') {
+        const totalPages = Math.ceil(players.length / 4);
+        const curPage = Math.min(state.cardPage || 0, totalPages - 1);
+        const startIndex = curPage * 4;
+        const pagePlayers = players.slice(startIndex, startIndex + 4);
+
+        if (cardPageIndicator) cardPageIndicator.innerText = `Sheet ${curPage + 1} of ${totalPages || 1}`;
+
+        tableContainer.innerHTML = `
+          <div class="w-full h-full grid grid-cols-2 grid-rows-2 gap-1.5 p-0.5">
+            ${pagePlayers.map(p => {
+              const pos = getPlayerPositionsDetailed(p.num);
+              
+              const offTags = pos.offense.map(o => 
+                o.stringIdx === 0
+                  ? `<span class="bg-emerald-600 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🏈 ${o.code}</span>`
+                  : o.stringIdx === 1
+                  ? `<span class="bg-white text-slate-950 border border-emerald-600 font-black px-1.5 py-0.5 rounded text-[7.5pt]">🏈 ${o.code}(2)</span>`
+                  : o.stringIdx === 2
+                  ? `<span class="bg-amber-800 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🏈 ${o.code}(3)</span>`
+                  : `<span class="bg-purple-600 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🏈 ${o.code}(Diamond)</span>`
+              ).join(' ') || '<span class="text-slate-300 text-[7pt] italic">--</span>';
+
+              const defTags = pos.defense.map(d => 
+                d.stringIdx === 0
+                  ? `<span class="bg-slate-950 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🛡️ ${d.code}</span>`
+                  : d.stringIdx === 1
+                  ? `<span class="bg-amber-400 text-slate-950 font-black px-1.5 py-0.5 rounded text-[7.5pt]">🛡️ ${d.code}(2)</span>`
+                  : d.stringIdx === 2
+                  ? `<span class="bg-amber-800 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🛡️ ${d.code}(3)</span>`
+                  : `<span class="bg-purple-600 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🛡️ ${d.code}(Diamond)</span>`
+              ).join(' ') || '<span class="text-slate-300 text-[7pt] italic">--</span>';
+
+              const koTags = pos.kickoff.map(k => 
+                k.stringIdx === 0
+                  ? `<span class="bg-red-600 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">🚀 ${k.code}</span>`
+                  : `<span class="bg-red-50 text-red-900 border border-red-300 font-bold px-1 py-0.5 rounded text-[7pt]">${k.code}(${k.stringIdx+1})</span>`
+              ).join(' ') || '<span class="text-slate-300 text-[7pt] italic">--</span>';
+
+              const krTags = pos.kickreturn.map(k => 
+                k.stringIdx === 0
+                  ? `<span class="bg-blue-600 text-white font-black px-1.5 py-0.5 rounded text-[7.5pt]">⚡ ${k.code}</span>`
+                  : `<span class="bg-blue-50 text-blue-900 border border-blue-300 font-bold px-1 py-0.5 rounded text-[7pt]">${k.code}(${k.stringIdx+1})</span>`
+              ).join(' ') || '<span class="text-slate-300 text-[7pt] italic">--</span>';
+
+              return `
+                <div class="border-2 border-black rounded-xl p-2 bg-white flex flex-col justify-between shadow-xs overflow-hidden box-border">
+                  <div class="flex items-center justify-between border-b-2 border-black pb-0.5 mb-0.5">
+                    <span class="bg-black text-white font-black text-[10.5pt] px-2 py-0.5 rounded leading-none">#${p.num}</span>
+                    <span class="font-black text-[11pt] truncate text-slate-900">${formatName(p)}</span>
+                  </div>
+
+                  <div class="space-y-0.5 flex-1 flex flex-col justify-around py-0.5">
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <span class="font-extrabold text-[7pt] text-slate-500 uppercase tracking-tight w-6">OFF:</span>
+                      <div class="flex flex-wrap gap-0.5 flex-1 items-center">${offTags}</div>
+                    </div>
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <span class="font-extrabold text-[7pt] text-slate-500 uppercase tracking-tight w-6">DEF:</span>
+                      <div class="flex flex-wrap gap-0.5 flex-1 items-center">${defTags}</div>
+                    </div>
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <span class="font-extrabold text-[7pt] text-slate-500 uppercase tracking-tight w-6">KO:</span>
+                      <div class="flex flex-wrap gap-0.5 flex-1 items-center">${koTags}</div>
+                    </div>
+                    <div class="flex items-center gap-1 flex-wrap">
+                      <span class="font-extrabold text-[7pt] text-slate-500 uppercase tracking-tight w-6">KR:</span>
+                      <div class="flex flex-wrap gap-0.5 flex-1 items-center">${krTags}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      } else if (state.activeTab === 'preferences') {
+        tableContainer.innerHTML = `
+          <div class="w-full h-full flex flex-col justify-between overflow-hidden">
+            <div class="w-full overflow-hidden flex-1">
+              <table class="roster-table w-full border-collapse text-left text-[7.5pt] font-medium leading-tight">
+                <thead>
+                  <tr class="bg-slate-200 text-black font-bold border-b-2 border-black">
+                    <th class="px-1 py-[1.5px] text-center w-[4%]">#</th>
+                    <th class="px-1.5 py-[1.5px] w-[18%]">Player Name</th>
+                    <th class="px-1 py-[1.5px] w-[13%] text-center">Offense</th>
+                    <th class="px-1 py-[1.5px] w-[13%] text-center">Defense</th>
+                    <th class="px-1 py-[1.5px] w-[13%] text-center">Kickoff</th>
+                    <th class="px-1 py-[1.5px] w-[13%] text-center">Kick Return</th>
+                    <th class="px-1 py-[1.5px] w-[13%] text-center">Punt Return</th>
+                    <th class="px-1 py-[1.5px] w-[13%] text-center">Punt Team</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${players.map((p, idx) => `
+                    <tr class="${idx % 2 === 1 ? 'bg-slate-50' : 'bg-white'} border-b border-slate-300">
+                      <td class="px-1 py-[1px] font-bold text-center border-r border-black">${p.num}</td>
+                      <td class="px-1.5 py-[1px] font-bold border-r border-black truncate text-slate-900">${formatName(p)}</td>
+                      <td class="px-1 py-[1px] text-center border-r border-slate-300">${getBadgedPositionsInTab(p.num, 'offense')}</td>
+                      <td class="px-1 py-[1px] text-center border-r border-slate-300">${getBadgedPositionsInTab(p.num, 'defense')}</td>
+                      <td class="px-1 py-[1px] text-center border-r border-slate-300">${getBadgedPositionsInTab(p.num, 'kickoff')}</td>
+                      <td class="px-1 py-[1px] text-center border-r border-slate-300">${getBadgedPositionsInTab(p.num, 'kickreturn')}</td>
+                      <td class="px-1 py-[1px] text-center border-r border-slate-300">${getBadgedPositionsInTab(p.num, 'puntreturn')}</td>
+                      <td class="px-1 py-[1px] text-center">${getBadgedPositionsInTab(p.num, 'punt')}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+
+            <div class="mt-1 pt-1 border-t-2 border-black flex flex-wrap items-center justify-between gap-1 text-[6.5pt] font-extrabold bg-slate-50 px-2 py-1 rounded border border-slate-300">
+              <span class="text-slate-900 uppercase tracking-tight text-[7pt]">Color Legend:</span>
+              <div class="flex items-center gap-1 flex-wrap">
+                <span class="bg-emerald-600 text-white px-1.5 py-[0.5px] rounded text-[6.5pt]">Green O</span>
+                <span class="bg-white text-slate-950 border border-emerald-600 px-1.5 py-[0.5px] rounded text-[6.5pt]">White O</span>
+                <span class="bg-slate-950 text-white px-1.5 py-[0.5px] rounded text-[6.5pt]">Black D</span>
+                <span class="bg-amber-400 text-slate-950 px-1.5 py-[0.5px] rounded text-[6.5pt]">Yellow D</span>
+                <span class="bg-amber-800 text-white px-1.5 py-[0.5px] rounded text-[6.5pt]">Brown O/D</span>
+                <span class="bg-purple-600 text-white px-1.5 py-[0.5px] rounded text-[6.5pt]">Diamond</span>
+              </div>
+            </div>
+          </div>
+        `;
+      } else if (state.activeTab === 'rostersheet') {
+        tableContainer.innerHTML = renderGameParticipationSheet();
+      } else if (state.activeTab === 'master') {
+        tableContainer.innerHTML = renderMasterDepthChart();
+      } else if (['offense', 'defense', 'kickoff', 'kickreturn', 'puntreturn', 'punt'].includes(state.activeTab)) {
+        const activeKey = state.activeTab;
+        const positions = depthFormations[activeKey] || [];
+        const assigns = depthAssignments[activeKey] || {};
+
+        let th1Style = "bg-emerald-600 text-white";
+        let th2Style = "bg-white text-slate-950 border border-slate-300";
+        let th3Style = "bg-amber-800 text-white";
+        let th4Style = "bg-purple-600 text-white";
+
+        let col1Title = "1st String";
+        let col2Title = "2nd String";
+        let col3Title = "3rd String";
+        let col4Title = "Diamond";
+
+        if (activeKey === 'offense') {
+          col1Title = "Green O";
+          col2Title = "White O";
+          col3Title = "Brown O";
+          col4Title = "Diamond";
+        } else if (activeKey === 'defense') {
+          th1Style = "bg-slate-950 text-white";
+          th2Style = "bg-amber-400 text-slate-950";
+          col1Title = "Black D";
+          col2Title = "Yellow D";
+          col3Title = "Brown D";
+          col4Title = "Diamond";
+        } else if (activeKey === 'kickoff') {
+          th1Style = "bg-red-600 text-white";
+          th2Style = "bg-red-100 text-red-900 border border-red-300";
+        } else if (activeKey === 'kickreturn') {
+          th1Style = "bg-blue-600 text-white";
+          th2Style = "bg-blue-100 text-blue-900 border border-blue-300";
+        } else if (activeKey === 'puntreturn') {
+          th1Style = "bg-teal-600 text-white";
+          th2Style = "bg-teal-100 text-teal-900 border border-teal-300";
+        } else if (activeKey === 'punt') {
+          th1Style = "bg-orange-600 text-white";
+          th2Style = "bg-orange-100 text-orange-900 border border-orange-300";
+        }
+
+        const isLandscape = state.orientation === 'landscape';
+        const rowPy = isLandscape ? (state.density === 3 ? 'py-1' : state.density === 2 ? 'py-0.5' : 'py-[1px]') : (state.density === 3 ? 'py-1.5' : state.density === 2 ? 'py-1' : 'py-[1.5px]');
+        const headPy = isLandscape ? 'py-[2px]' : 'py-1';
+        const textSize = isLandscape ? 'text-[6.5pt]' : 'text-[7.5pt]';
+
+        tableContainer.innerHTML = `
+          <div class="w-full h-full overflow-hidden flex flex-col justify-start">
+            <table class="roster-table w-full border-collapse text-left ${textSize} leading-tight">
+              <thead>
+                <tr class="font-bold border-b-2 border-slate-900">
+                  <th class="px-1.5 ${headPy} bg-slate-900 text-white w-12">Code</th>
+                  <th class="px-1.5 ${headPy} bg-slate-900 text-white">Position Label</th>
+                  <th class="px-1.5 ${headPy} text-center w-24 ${th1Style}">${col1Title}</th>
+                  <th class="px-1.5 ${headPy} text-center w-24 ${th2Style}">${col2Title}</th>
+                  <th class="px-1.5 ${headPy} text-center w-24 ${th3Style}">${col3Title}</th>
+                  <th class="px-1.5 ${headPy} text-center w-24 ${th4Style}">${col4Title}</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${positions.map((pos, idx) => {
+                  const arr = assigns[pos.code] || ["", "", "", ""];
+                  return `
+                    <tr class="${idx % 2 === 1 ? 'bg-slate-50' : 'bg-white'} border-b border-slate-300">
+                      <td class="px-1.5 ${rowPy} font-black text-blue-900 border-r border-black uppercase">${pos.code}</td>
+                      <td class="px-1.5 ${rowPy} font-bold text-slate-800 border-r border-black truncate">${pos.label}</td>
+                      <td class="px-1.5 ${rowPy} text-center font-extrabold text-emerald-800 border-r border-slate-300 truncate">${formatPlayerShort(arr[0])}</td>
+                      <td class="px-1.5 ${rowPy} text-center font-bold text-slate-800 border-r border-slate-300 truncate">${formatPlayerShort(arr[1])}</td>
+                      <td class="px-1.5 ${rowPy} text-center font-bold text-amber-900 border-r border-slate-300 truncate">${formatPlayerShort(arr[2])}</td>
+                      <td class="px-1.5 ${rowPy} text-center font-bold text-purple-700 truncate">${formatPlayerShort(arr[3])}</td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+    }
+
+    function renderMasterDepthChart() {
+      const units = [
+        { key: 'offense', title: 'OFFENSE', icon: '🏈', tag: 'DIAMOND', tagClass: 'bg-purple-600 text-white', playerClass: 'text-purple-700', stringIdx: 3 },
+        { key: 'defense', title: 'DEFENSE', icon: '🛡️', tag: 'DIAMOND', tagClass: 'bg-purple-600 text-white', playerClass: 'text-purple-700', stringIdx: 3 },
+        { key: 'kickoff', title: 'KICKOFF', icon: '🚀', tag: '1ST STRING', tagClass: 'bg-red-600 text-white', playerClass: 'text-red-700', stringIdx: 0 },
+        { key: 'kickreturn', title: 'KICK RETURN', icon: '⚡', tag: '1ST STRING', tagClass: 'bg-blue-600 text-white', playerClass: 'text-blue-700', stringIdx: 0 }
+      ];
+
+      return `
+        <div class="w-full h-full grid grid-cols-2 grid-rows-2 gap-1.5 p-0.5 overflow-hidden text-[6pt]">
+          ${units.map(u => {
+            const positions = depthFormations[u.key] || [];
+            const assigns = depthAssignments[u.key] || {};
+            return `
+              <div class="border-2 border-slate-900 rounded-lg p-1 bg-white flex flex-col justify-between box-border overflow-hidden">
+                <div class="font-extrabold text-[6.5pt] bg-slate-900 text-white px-1.5 py-0.5 rounded mb-1 flex justify-between items-center leading-none">
+                  <span>${u.icon} ${u.title}</span>
+                  <span class="${u.tagClass} px-1.5 py-[1px] rounded text-[5pt] font-black uppercase tracking-tight">${u.tag}</span>
+                </div>
+                <div class="flex-1 overflow-hidden space-y-[1px]">
+                  ${positions.map(p => {
+                    const arr = assigns[p.code] || ["", "", "", ""];
+                    const playerNum = arr[u.stringIdx];
+                    const playerText = playerNum ? formatPlayerShort(playerNum) : '<span class="text-slate-300 font-normal italic">--</span>';
+                    return `
+                      <div class="flex justify-between items-center border-b border-slate-200 pb-[1px] leading-none">
+                        <span class="font-black text-slate-900 w-8 truncate text-[6pt]">${p.code}</span>
+                        <span class="font-bold text-slate-500 truncate flex-1 text-left text-[5.5pt] pr-1">${p.label}</span>
+                        <span class="font-black ${u.playerClass} truncate w-24 text-right text-[6pt]">${playerText}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function renderGameParticipationSheet() {
+      const renderHalf = (halfTitle) => `
+        <div class="flex-1 flex flex-col overflow-hidden text-[6pt]">
+          <div class="space-y-[1px] mb-1 text-center font-black tracking-wider text-[6.5pt] uppercase">
+            <div class="bg-[#2e7d32] text-white py-[1.5px] rounded-xs border border-black">GREEN OFFENSE</div>
+            <div class="bg-white text-black py-[1.5px] rounded-xs border border-black">WHITE OFFENSE</div>
+            <div class="bg-black text-white py-[1.5px] rounded-xs border border-black">BLACK DEFENSE</div>
+            <div class="bg-[#fbc02d] text-slate-950 py-[1.5px] rounded-xs border border-black">GOLD DEFENSE</div>
+            <div class="bg-[#d32f2f] text-white py-[1.5px] rounded-xs border border-black">KICKOFF</div>
+            <div class="bg-[#2563eb] text-white py-[1.5px] rounded-xs border border-black">KICK RETURN</div>
+          </div>
+
+          <div class="bg-slate-200 text-black font-extrabold text-center py-[1px] border-y border-black text-[7.5pt] uppercase tracking-wide">
+            ${halfTitle}
+          </div>
+
+          <table class="w-full border-collapse text-[6.5pt]">
+            <thead>
+              <tr class="bg-slate-100 border-b border-black font-extrabold text-center">
+                <th class="border-r border-black w-5 py-[1px]">#</th>
+                <th class="border-r border-black w-20 text-left px-1 py-[1px]">Name</th>
+                <th class="border-r border-black w-24 px-1 py-[1px]">POS</th>
+                <th class="border-r border-black py-[1px]" colspan="4">IN</th>
+                <th class="bg-slate-400 w-2 border-r border-black"></th>
+                <th class="py-[1px]" colspan="4">OUT</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${players.map((p, idx) => {
+                const pos = getPlayerPositionsDetailed(p.num);
+                const offBadge = pos.offense.filter(o => o.stringIdx === 0 || o.stringIdx === 1).map(o => 
+                  o.stringIdx === 0 
+                    ? `<span class="bg-[#2e7d32] text-white px-0.5 rounded font-black text-[5pt] m-[0.5px] inline-block">${o.code}</span>` 
+                    : `<span class="bg-white text-black border border-[#2e7d32] px-0.5 rounded font-black text-[5pt] m-[0.5px] inline-block">${o.code}(2)</span>`
+                ).join('');
+
+                const defBadge = pos.defense.filter(d => d.stringIdx === 0 || d.stringIdx === 1).map(d => 
+                  d.stringIdx === 0 
+                    ? `<span class="bg-black text-white px-0.5 rounded font-black text-[5pt] m-[0.5px] inline-block">${d.code}</span>` 
+                    : `<span class="bg-[#facc15] text-slate-950 px-0.5 rounded font-black text-[5pt] m-[0.5px] inline-block">${d.code}(2)</span>`
+                ).join('');
+
+                const posBadges = [offBadge, defBadge].filter(Boolean).join('') || '<span class="text-slate-300 text-[5pt] italic">--</span>';
+
+                return `
+                  <tr class="${idx % 2 === 1 ? 'bg-slate-50/80' : 'bg-white'} border-b border-slate-300 h-[13.5px]">
+                    <td class="border-r border-black text-center font-extrabold px-0.5">${p.num}</td>
+                    <td class="border-r border-black font-bold px-1 truncate text-slate-900">${formatName(p)}</td>
+                    <td class="border-r border-black text-center px-0.5 font-bold">${posBadges}</td>
+                    <td class="border-r border-slate-300 w-5"></td>
+                    <td class="border-r border-slate-300 w-5"></td>
+                    <td class="border-r border-slate-300 w-5"></td>
+                    <td class="border-r border-black w-5"></td>
+                    <td class="bg-slate-400 border-r border-black w-2"></td>
+                    <td class="border-r border-slate-300 w-5"></td>
+                    <td class="border-r border-slate-300 w-5"></td>
+                    <td class="border-r border-slate-300 w-5"></td>
+                    <td class="w-5"></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+
+          <div class="mt-2 pt-1 flex justify-between items-end text-[7pt] font-extrabold text-slate-900 border-t border-black">
+            <div>
+              <div>${halfTitle === '1ST HALF' ? 'COWBOYS' : 'OPPONENT'}</div>
+              <div class="mt-1">Spotter <span class="inline-block w-28 border-b border-black"></span></div>
+            </div>
+            <div>
+              <div class="mt-1">GM <span class="inline-block w-28 border-b border-black"></span></div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      return `
+        <div class="w-full h-full flex gap-3 overflow-hidden p-1 bg-white">
+          ${renderHalf('1ST HALF')}
+          <div class="w-[2px] bg-slate-800 self-stretch"></div>
+          ${renderHalf('2ND HALF')}
+        </div>
+      `;
+    }
+
+    function triggerPrint() {
+      if (state.activeTab === 'practice') {
+        printPracticePlanHalfPages();
+      } else {
+        window.focus();
+        window.print();
+      }
+    }
+
+    function printRosterOverviewLetter() {
+      switchTab('preferences');
+      setTimeout(() => {
+        window.focus();
+        window.print();
+      }, 150);
+    }
+
+    function printMasterChart1Page() {
+      let printTarget = document.getElementById('printTargetArea');
+      if (!printTarget) {
+        printTarget = document.createElement('div');
+        printTarget.id = 'printTargetArea';
+        document.body.appendChild(printTarget);
+      }
+
+      const masterTitle = (state.tabTitles && state.tabTitles.master) || 'MASTER DEPTH CHART (DIAMOND & ST 1ST)';
+      
+      const singleMasterHTML = `
+        <div style="border: 2px solid #0f172a; border-radius: 8px; padding: 6px 8px; background: white; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; height: 4.85in; overflow: hidden; page-break-inside: avoid; break-inside: avoid;">
+          <div style="border-bottom: 2px solid #0f172a; padding-bottom: 2px; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="font-weight: 900; font-size: 9pt; text-transform: uppercase; margin: 0; letter-spacing: 0.5px; color: #0f172a;">${masterTitle}</h2>
+            <span style="font-weight: 800; font-size: 7pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">6" × 4" Clipboard Reference (Letter 2/Page)</span>
+          </div>
+          <div style="flex: 1; height: 4.35in; overflow: hidden; display: flex; flex-direction: column;">
+            ${renderMasterDepthChart()}
+          </div>
+        </div>
+      `;
+
+      printTarget.innerHTML = `
+        <div class="print-master-letter-container" style="width: 8.0in; height: 10.3in; max-height: 10.3in; margin: 0 auto; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; background: white; page-break-inside: avoid; break-inside: avoid; page-break-after: avoid;">
+          ${singleMasterHTML}
+          <div style="border-top: 2px dashed #94a3b8; margin: 6px 0; position: relative; text-align: center;">
+            <span style="position: absolute; top: -8px; left: 50%; transform: translateX(-50%); background: white; padding: 0 10px; font-size: 7pt; color: #475569; font-weight: 900; text-transform: uppercase; letter-spacing: 1px;">✂️ Cut Line (2 Cards Per Letter Sheet)</span>
+          </div>
+          ${singleMasterHTML}
+        </div>
+      `;
+
+      const dynStyle = document.getElementById('dynamicPrintStyle');
+      if (dynStyle) dynStyle.disabled = true;
+
+      let styleEl = document.getElementById('letterCardsPrintStyle');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'letterCardsPrintStyle';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.disabled = false;
+      styleEl.innerHTML = `
+        @media print {
+          @page { size: letter portrait !important; margin: 0.25in !important; }
+          html, body {
+            width: 8.5in !important;
+            height: 11in !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: white !important;
+            overflow: visible !important;
+          }
+          header, main, aside, section, .no-print, #drillStudioContainer, #standardAppContainer, #imageDownloadModal, #rosterModal, #multiDrillModal, #bulkPasteModal, .print-wrapper { 
+            display: none !important; 
+          }
+          #printTargetArea { 
+            display: block !important; 
+            width: 100% !important;
+            height: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+        }
+      `;
+
+      setTimeout(() => {
+        window.focus();
+        window.print();
+        setTimeout(() => {
+          if (dynStyle) dynStyle.disabled = false;
+          if (styleEl) styleEl.disabled = true;
+        }, 1000);
+      }, 250);
+    }
+
+    function printAllPlayerCardsLetter() {
+      let printTarget = document.getElementById('printTargetArea');
+      if (!printTarget) {
+        printTarget = document.createElement('div');
+        printTarget.id = 'printTargetArea';
+        document.body.appendChild(printTarget);
+      }
+
+      printTarget.innerHTML = '';
+      const chunkSize = 10;
+      let pagesHTML = '';
+
+      for (let i = 0; i < players.length; i += chunkSize) {
+        const pagePlayers = players.slice(i, i + chunkSize);
+
+        pagesHTML += `
+          <div class="print-page-letter">
+            ${pagePlayers.map(p => {
+              const pos = getPlayerPositionsDetailed(p.num);
+              const offTags = pos.offense.map(o => 
+                o.stringIdx === 0
+                  ? `<span style="background-color:#059669; color:white; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🏈 ${o.code} (1st)</span>`
+                  : o.stringIdx === 1
+                  ? `<span style="background-color:#ffffff; color:#0f172a; border:2px solid #059669; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🏈 ${o.code} (2nd)</span>`
+                  : o.stringIdx === 2
+                  ? `<span style="background-color:#78350f; color:white; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🏈 ${o.code} (3rd)</span>`
+                  : `<span style="background-color:#7e22ce; color:white; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🏈 ${o.code} (Diamond)</span>`
+              ).join(' ') || '<span style="color:#cbd5e1; font-size:8.5pt;">--</span>';
+
+              const defTags = pos.defense.map(d => 
+                d.stringIdx === 0
+                  ? `<span style="background-color:#020617; color:white; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🛡️ ${d.code} (1st)</span>`
+                  : d.stringIdx === 1
+                  ? `<span style="background-color:#facc15; color:#0f172a; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🛡️ ${d.code} (2nd)</span>`
+                  : d.stringIdx === 2
+                  ? `<span style="background-color:#78350f; color:white; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🛡️ ${d.code} (3rd)</span>`
+                  : `<span style="background-color:#7e22ce; color:white; font-weight:900; padding:2px 5px; border-radius:4px; font-size:9pt;">🛡️ ${d.code} (Diamond)</span>`
+              ).join(' ') || '<span style="color:#cbd5e1; font-size:8.5pt;">--</span>';
+
+              return `
+                <div style="border:2px solid #000; border-radius:10px; padding:8px; background:white; display:flex; flex-direction:column; justify-content:space-between; box-shadow:0 1px 3px rgba(0,0,0,0.1); box-sizing:border-box; overflow:hidden; page-break-inside:avoid; break-inside:avoid;">
+                  <div style="display:flex; align-items:center; justify-content:space-between; border-bottom:2px solid #000; padding-bottom:2px; margin-bottom:2px;">
+                    <span style="background-color:#000; color:white; font-weight:900; font-size:11pt; padding:2px 6px; border-radius:4px; line-height:1;">#${p.num}</span>
+                    <span style="font-weight:900; font-size:12pt; color:#0f172a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${formatName(p)}</span>
+                  </div>
+
+                  <div style="display:flex; flex-direction:column; justify-content:space-around; flex:1; gap:3px;">
+                    <div style="display:flex; align-items:center; gap:4px;">
+                      <span style="font-weight:900; font-size:8pt; color:#64748b; width:28px;">OFF:</span>
+                      <div style="display:flex; flex-wrap:wrap; gap:3px; flex:1; align-items:center;">${offTags}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                      <span style="font-weight:900; font-size:8pt; color:#64748b; width:28px;">DEF:</span>
+                      <div style="display:flex; flex-wrap:wrap; gap:3px; flex:1; align-items:center;">${defTags}</div>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+      }
+
+      printTarget.innerHTML = pagesHTML;
+
+      let styleEl = document.getElementById('letterCardsPrintStyle');
+      if (!styleEl) {
+        styleEl = document.createElement('style');
+        styleEl.id = 'letterCardsPrintStyle';
+        document.head.appendChild(styleEl);
+      }
+      styleEl.innerHTML = `
+        @media print {
+          @page { size: 8.5in 11in; margin: 0; }
+          header, main, .no-print, #drillStudioContainer, #standardAppContainer, #imageDownloadModal, #rosterModal, #multiDrillModal, #bulkPasteModal { display: none !important; }
+          #printTargetArea { display: block !important; }
+        }
+      `;
+
+      setTimeout(() => {
+        window.focus();
+        window.print();
+        setTimeout(() => {
+          styleEl.innerHTML = '';
+        }, 1000);
+      }, 300);
+    }
+
+    // ROSTER EDIT MODAL
+    function toggleRosterEditor() {
+      const modal = document.getElementById('rosterModal');
+      if (!modal) return;
+      if (modal.classList.contains('hidden')) {
+        renderModalRosterList();
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+        saveLocalData();
+        renderCard();
+      }
+    }
+
+    function renderModalRosterList() {
+      const list = document.getElementById('modalRosterList');
+      if (!list) return;
+
+      list.innerHTML = players.map((p, idx) => `
+        <div class="flex items-center space-x-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+          <span class="text-xs font-bold text-slate-400 w-5">${idx + 1}.</span>
+          <input type="text" value="${p.num}" placeholder="#" onchange="updatePlayerInModal(${idx}, 'num', this.value)" class="w-12 bg-white border border-slate-300 text-slate-900 text-xs font-bold rounded p-1.5 text-center">
+          <input type="text" value="${p.firstName}" placeholder="First Name" onchange="updatePlayerInModal(${idx}, 'firstName', this.value)" class="flex-1 bg-white border border-slate-300 text-slate-900 text-xs font-semibold rounded p-1.5">
+          <input type="text" value="${p.lastName}" placeholder="Last Name" onchange="updatePlayerInModal(${idx}, 'lastName', this.value)" class="flex-1 bg-white border border-slate-300 text-slate-900 text-xs font-semibold rounded p-1.5">
+          <button onclick="removePlayerInModal(${idx})" class="text-red-500 hover:text-red-700 px-2 py-1 font-bold text-base">&times;</button>
+        </div>
+      `).join('');
+    }
+
+    function updatePlayerInModal(idx, field, val) {
+      if (players[idx]) {
+        players[idx][field] = val.trim();
+      }
+    }
+
+    function removePlayerInModal(idx) {
+      players.splice(idx, 1);
+      renderModalRosterList();
+      updateStats();
+    }
+
+    function addNewPlayer() {
+      players.push({ num: "00", firstName: "New", lastName: "Player" });
+      renderModalRosterList();
+      updateStats();
+    }
+
+    // BULK PASTE
+    function togglePasteImportModal() {
+      const modal = document.getElementById('bulkPasteModal');
+      if (!modal) return;
+      if (modal.classList.contains('hidden')) {
+        modal.classList.remove('hidden');
+      } else {
+        modal.classList.add('hidden');
+      }
+    }
+
+    function processBulkPaste() {
+      const textarea = document.getElementById('bulkPasteInput');
+      if (!textarea) return;
+      const text = textarea.value.trim();
+      if (!text) {
+        showToast('Please paste roster lines', 'error');
+        return;
+      }
+
+      const lines = text.split('\n');
+      const newPlayers = [];
+
+      lines.forEach(line => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        const tokens = trimmed.split(/[\t,|]+/).map(t => t.trim()).filter(Boolean);
+        if (tokens.length >= 2) {
+          const num = tokens[0].replace('#', '');
+          const firstName = tokens[1];
+          const lastName = tokens.slice(2).join(' ') || '';
+          newPlayers.push({ num, firstName, lastName });
+        }
+      });
+
+      if (newPlayers.length > 0) {
+        players = newPlayers;
+        saveLocalData();
+        renderCard();
+        togglePasteImportModal();
+        showToast(`Imported ${newPlayers.length} players`, 'success');
+      } else {
+        showToast('Could not parse roster lines', 'error');
+      }
+    }
+
+    // BACKUP & RESTORE
+    function exportJSONData() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ players, depthAssignments, depthFormations, state, practiceWeek, drillLibrary, currentActiveDrillId }, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `football_roster_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      showToast('Backup JSON downloaded', 'success');
+    }
+
+    function importJSONData(file) {
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (parsed.players) players = parsed.players;
+          if (parsed.depthAssignments) depthAssignments = parsed.depthAssignments;
+          if (parsed.depthFormations) depthFormations = parsed.depthFormations;
+          if (parsed.practiceWeek) practiceWeek = parsed.practiceWeek;
+          if (parsed.drillLibrary) drillLibrary = parsed.drillLibrary;
+          if (parsed.currentActiveDrillId) currentActiveDrillId = parsed.currentActiveDrillId;
+          if (parsed.state) state = { ...state, ...parsed.state };
+          saveLocalData();
+          renderDrillDirectory();
+          loadDrillIntoStudio(currentActiveDrillId);
+          renderPracticeDaysSetupControls();
+          renderAssignControls();
+          renderCard();
+          showToast('Data restored successfully', 'success');
+        } catch (err) {
+          showToast('Invalid backup JSON file', 'error');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // HIGH RES IMAGE EXPORT
+    function generateAndShowImage() {
+      const card = document.getElementById('clipboardCard');
+      if (!card || typeof html2canvas === 'undefined') return;
+
+      html2canvas(card, { scale: 3, useCORS: true }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const imgPreview = document.getElementById('generatedImagePreview');
+        const dlBtn = document.getElementById('modalDownloadBtn');
+        const modal = document.getElementById('imageDownloadModal');
+
+        if (imgPreview) imgPreview.src = imgData;
+        if (dlBtn) dlBtn.href = imgData;
+        if (modal) modal.classList.remove('hidden');
+      });
+    }
+
+    function closeImageModal() {
+      const modal = document.getElementById('imageDownloadModal');
+      if (modal) modal.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
